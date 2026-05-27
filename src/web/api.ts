@@ -31,7 +31,7 @@ export function createDiffRequestPreview(
   return JSON.stringify(createDiffRequest(path, mode, branch), null, 2);
 }
 
-function createDiffRequest(
+export function createDiffRequest(
   path: string,
   mode: DiffMode,
   branch: string | undefined
@@ -39,10 +39,34 @@ function createDiffRequest(
   if (mode === "branch") {
     return { path, mode, branch: branch ?? "" };
   }
-  if (mode === "full" && branch != null) {
-    return { path, mode, branch };
-  }
   return { path, mode };
+}
+
+export async function streamDiff(
+  request: DiffStreamRequest,
+  signal?: AbortSignal
+): Promise<Response> {
+  const init: RequestInit = {
+    body: JSON.stringify(request),
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { Accept: "text/plain", "Content-Type": "application/json" },
+    method: "POST",
+    mode: "same-origin",
+    redirect: "error",
+  };
+  if (signal != null) {
+    init.signal = signal;
+  }
+
+  const response = await fetch("/api/diffs/stream", init);
+
+  if (!response.ok) {
+    const message = await readErrorMessage(response);
+    throw new Error(message);
+  }
+
+  return response;
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {

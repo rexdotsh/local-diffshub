@@ -26,6 +26,7 @@ import {
   loadWorktrees,
   openProject,
 } from "./api";
+import { DiffViewer } from "./diff-viewer";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
@@ -188,21 +189,29 @@ export function App() {
                 <TabsTrigger value="full">Full review</TabsTrigger>
               </TabsList>
               <TabsContent value={selectedMode} className="mt-5">
-                <div className="rounded-xl border bg-card p-5 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h2 className="font-semibold text-xl">Diff request</h2>
-                      <p className="text-muted-foreground text-sm">
-                        Pierre viewer integration lands next. This shell already
-                        resolves a valid stream payload.
-                      </p>
+                {project == null ? (
+                  <div className="rounded-xl border bg-card p-5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="font-semibold text-xl">Diff request</h2>
+                        <p className="text-muted-foreground text-sm">
+                          Pierre viewer integration lands next. This shell
+                          already resolves a valid stream payload.
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{selectedMode}</Badge>
                     </div>
-                    <Badge variant="secondary">{selectedMode}</Badge>
+                    <pre className="mt-4 overflow-auto rounded-lg bg-muted p-4 text-muted-foreground text-xs">
+                      {diffURL ?? "Open a project to prepare a diff request."}
+                    </pre>
                   </div>
-                  <pre className="mt-4 overflow-auto rounded-lg bg-muted p-4 text-muted-foreground text-xs">
-                    {diffURL ?? "Open a project to prepare a diff request."}
-                  </pre>
-                </div>
+                ) : (
+                  <DiffViewer
+                    branch={selectedBranch}
+                    mode={selectedMode}
+                    path={project.repoRoot}
+                  />
+                )}
               </TabsContent>
             </Tabs>
           </div>
