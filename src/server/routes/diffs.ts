@@ -66,20 +66,16 @@ function limitDiffStream(
   const reader = source.getReader();
   let byteLength = 0;
   let timeout: ReturnType<typeof setTimeout> | undefined;
-  let escalation: ReturnType<typeof setTimeout> | undefined;
 
   function cleanup(): void {
     if (timeout != null) {
       clearTimeout(timeout);
     }
-    if (escalation != null) {
-      clearTimeout(escalation);
-    }
   }
 
   function kill(): void {
     subprocess.kill("SIGTERM");
-    escalation = setTimeout(() => subprocess.kill("SIGKILL"), 250);
+    setTimeout(() => subprocess.kill("SIGKILL"), 250);
   }
 
   return new ReadableStream<Uint8Array>({

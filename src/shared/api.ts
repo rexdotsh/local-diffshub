@@ -136,6 +136,12 @@ export const diffStreamRequestSchema = z.discriminatedUnion("mode", [
   }),
 ]);
 
+export const projectChangeEventSchema = z.object({
+  changedPath: z.string().min(1),
+  repoRoot: z.string().min(1),
+  timestamp: z.string().datetime(),
+});
+
 export type RecentProject = z.output<typeof recentProjectSchema>;
 export type AppPreferences = z.output<typeof appPreferencesSchema>;
 export type AppState = z.output<typeof appStateSchema>;
@@ -155,3 +161,4 @@ export type StatusSummary = z.output<typeof statusSummarySchema>;
 export type StatusResponse = z.output<typeof statusResponseSchema>;
 export type DiffMode = z.output<typeof diffModeSchema>;
 export type DiffStreamRequest = z.output<typeof diffStreamRequestSchema>;
+export type ProjectChangeEvent = z.output<typeof projectChangeEventSchema>;
