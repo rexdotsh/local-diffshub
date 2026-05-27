@@ -80,4 +80,46 @@ describe("project routes", () => {
     expect(response.status).toBe(200);
     expect(store.paths).toEqual([repoPath]);
   });
+
+  test("returns branches, worktrees, and status", async () => {
+    const repoPath = await createGitRepository();
+    const app = createProjectsApp(createMemoryStore());
+    const body = JSON.stringify({ path: repoPath });
+
+    const branches = await app.request("/api/projects/branches", {
+      body,
+      method: "POST",
+    });
+    const worktrees = await app.request("/api/projects/worktrees", {
+      body,
+      method: "POST",
+    });
+    const status = await app.request("/api/projects/status", {
+      body,
+      method: "POST",
+    });
+
+    expect(branches.status).toBe(200);
+    expect(worktrees.status).toBe(200);
+    expect(status.status).toBe(200);
+    expect(await branches.json()).toMatchObject({
+      branches: [{ name: "main", type: "local" }],
+    });
+    expect(await worktrees.json()).toMatchObject({
+      worktrees: [{ branch: "main", path: repoPath }],
+    });
+    expect(await status.json()).toMatchObject({ status: { branch: "main" } });
+  });
+
+  test("returns bad request for read endpoints outside git repos", async () => {
+    const app = createProjectsApp(createMemoryStore());
+
+    const response = await app.request("/api/projects/status", {
+      body: JSON.stringify({ path: "/definitely/missing/local-diffhub" }),
+      method: "POST",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: "bad_request" });
+  });
 });

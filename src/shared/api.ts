@@ -46,6 +46,10 @@ export const openProjectRequestSchema = z.strictObject({
   path: projectPathSchema,
 });
 
+export const projectPathRequestSchema = z.strictObject({
+  path: projectPathSchema,
+});
+
 export const defaultBranchSchema = z.object({
   name: z.string().min(1),
   ref: z.string().min(1),
@@ -62,6 +66,52 @@ export const projectSummarySchema = z.object({
   isWorktree: z.boolean(),
 });
 
+export const branchSummarySchema = z.object({
+  commit: z.string().min(1),
+  current: z.boolean(),
+  name: z.string().min(1),
+  ref: z.string().min(1),
+  type: z.enum(["local", "remote"]),
+  upstream: z.string().min(1).nullable(),
+});
+
+export const branchesResponseSchema = z.object({
+  branches: z.array(branchSummarySchema),
+});
+
+export const worktreeSummarySchema = z.object({
+  branch: z.string().min(1).nullable(),
+  commit: z.string().min(1).nullable(),
+  detached: z.boolean(),
+  path: z.string().min(1),
+});
+
+export const worktreesResponseSchema = z.object({
+  worktrees: z.array(worktreeSummarySchema),
+});
+
+export const statusEntrySchema = z.object({
+  originalPath: z.string().min(1).nullable(),
+  path: z.string().min(1),
+  staged: z.string().min(1),
+  unstaged: z.string().min(1),
+});
+
+export const statusSummarySchema = z.object({
+  ahead: z.number().int().nonnegative(),
+  behind: z.number().int().nonnegative(),
+  branch: z.string().min(1).nullable(),
+  conflicted: z.number().int().nonnegative(),
+  entries: z.array(statusEntrySchema),
+  staged: z.number().int().nonnegative(),
+  unstaged: z.number().int().nonnegative(),
+  untracked: z.number().int().nonnegative(),
+});
+
+export const statusResponseSchema = z.object({
+  status: statusSummarySchema,
+});
+
 export type RecentProject = z.output<typeof recentProjectSchema>;
 export type AppPreferences = z.output<typeof appPreferencesSchema>;
 export type AppState = z.output<typeof appStateSchema>;
@@ -71,3 +121,11 @@ export type UpsertRecentProjectRequest = z.output<
 export type OpenProjectRequest = z.output<typeof openProjectRequestSchema>;
 export type DefaultBranch = z.output<typeof defaultBranchSchema>;
 export type ProjectSummary = z.output<typeof projectSummarySchema>;
+export type ProjectPathRequest = z.output<typeof projectPathRequestSchema>;
+export type BranchSummary = z.output<typeof branchSummarySchema>;
+export type BranchesResponse = z.output<typeof branchesResponseSchema>;
+export type WorktreeSummary = z.output<typeof worktreeSummarySchema>;
+export type WorktreesResponse = z.output<typeof worktreesResponseSchema>;
+export type StatusEntry = z.output<typeof statusEntrySchema>;
+export type StatusSummary = z.output<typeof statusSummarySchema>;
+export type StatusResponse = z.output<typeof statusResponseSchema>;

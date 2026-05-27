@@ -164,6 +164,8 @@ function concatChunks(
 function createGitEnv(): Record<string, string> {
   return {
     GIT_TERMINAL_PROMPT: "0",
+    GIT_OPTIONAL_LOCKS: "0",
+    GIT_PAGER: "cat",
     HOME: process.env.HOME ?? "",
     LANG: "C",
     LC_ALL: "C",
