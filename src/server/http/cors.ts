@@ -5,26 +5,35 @@ const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 export function localCors(): MiddlewareHandler {
   return async (context, next) => {
     const origin = context.req.header("origin");
-    if (origin != null && isTrustedOrigin(context.req.raw)) {
-      context.header("Access-Control-Allow-Origin", origin);
-      context.header("Access-Control-Allow-Credentials", "true");
-      context.header(
-        "Access-Control-Allow-Headers",
-        "accept, authorization, content-type"
-      );
-      context.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PATCH, OPTIONS"
-      );
-      context.header("Vary", "Origin");
-    }
+    const trusted = origin != null && isTrustedOrigin(context.req.raw);
 
     if (context.req.method.toUpperCase() === "OPTIONS") {
+      if (trusted) {
+        setCorsHeaders(context, origin);
+      }
       return context.body(null, 204);
     }
 
     await next();
+
+    if (trusted) {
+      setCorsHeaders(context, origin);
+    }
   };
+}
+
+function setCorsHeaders(
+  context: Parameters<MiddlewareHandler>[0],
+  origin: string
+): void {
+  context.header("Access-Control-Allow-Origin", origin);
+  context.header("Access-Control-Allow-Credentials", "true");
+  context.header(
+    "Access-Control-Allow-Headers",
+    "accept, authorization, content-type"
+  );
+  context.header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  context.header("Vary", "Origin");
 }
 
 export function isTrustedOrigin(request: Request): boolean {

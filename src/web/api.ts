@@ -10,11 +10,18 @@ import type {
 } from "../shared/api";
 
 const API_ORIGIN = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_ORIGIN ?? "http://127.0.0.1:3003")
+  ? (import.meta.env.VITE_API_ORIGIN ??
+    `http://${formatApiHost(location.hostname)}:3003`)
   : (import.meta.env.VITE_API_ORIGIN ?? "");
 
 export function apiUrl(path: string): string {
   return `${API_ORIGIN}${path}`;
+}
+
+function formatApiHost(hostname: string): string {
+  return hostname.includes(":") && !hostname.startsWith("[")
+    ? `[${hostname}]`
+    : hostname;
 }
 
 export function loadAppState(): Promise<AppState> {

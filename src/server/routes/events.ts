@@ -122,6 +122,10 @@ function createProjectEventStream(
 }
 
 function isCrossSiteEventRequest(request: Request): boolean {
+  if (isTrustedOrigin(request)) {
+    return false;
+  }
+
   const fetchSite = request.headers.get("sec-fetch-site");
   if (
     fetchSite != null &&
@@ -135,10 +139,6 @@ function isCrossSiteEventRequest(request: Request): boolean {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
   if (origin == null || host == null) {
-    return false;
-  }
-
-  if (isTrustedOrigin(request)) {
     return false;
   }
 
