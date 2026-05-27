@@ -79,6 +79,25 @@ describe("requireAccess", () => {
     expect(response.status).toBe(403);
   });
 
+  test("allows loopback dev origin mutations", async () => {
+    const app = createAuthApp({
+      allowLocalhostBypass: true,
+      password: undefined,
+      user: undefined,
+    });
+
+    const response = await app.request("/ok", {
+      method: "POST",
+      headers: {
+        host: "127.0.0.1:3003",
+        origin: "http://127.0.0.1:5173",
+        "sec-fetch-site": "same-site",
+      },
+    });
+
+    expect(response.status).toBe(404);
+  });
+
   test("accepts matching basic auth credentials", async () => {
     const app = createAuthApp({
       allowLocalhostBypass: false,

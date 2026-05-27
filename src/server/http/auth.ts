@@ -1,12 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
 
+import { isLoopbackHostname, isTrustedOrigin } from "./cors";
 import { createApiErrorResponse } from "./errors";
 
 const AUTH_REALM = "Local Diffhub";
 const BASIC_PREFIX = "Basic ";
-const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-
 export type AuthConfig = {
   allowLocalhostBypass: boolean;
   password: string | undefined;
@@ -144,10 +143,6 @@ function isLocalhostRequest(hostHeader: string | undefined): boolean {
   return isLoopbackHostname(hostname);
 }
 
-function isLoopbackHostname(hostname: string): boolean {
-  return LOCAL_HOSTNAMES.has(hostname);
-}
-
 function hasForwardedHost(headers: Headers): boolean {
   return (
     headers.has("cf-connecting-ip") ||
@@ -165,6 +160,7 @@ function isCrossSiteMutation(request: Request): boolean {
   if (
     fetchSite != null &&
     fetchSite !== "same-origin" &&
+    fetchSite !== "same-site" &&
     fetchSite !== "none"
   ) {
     return true;
@@ -173,6 +169,10 @@ function isCrossSiteMutation(request: Request): boolean {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
   if (origin == null || host == null) {
+    return false;
+  }
+
+  if (isTrustedOrigin(request)) {
     return false;
   }
 

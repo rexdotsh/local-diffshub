@@ -3,6 +3,7 @@ import { Hono } from "hono";
 
 import type { ProjectChangeEvent } from "../../shared/api";
 import { openProject } from "../git/project";
+import { isTrustedOrigin } from "../http/cors";
 import { createApiErrorResponse, createBadRequest } from "../http/errors";
 
 const EVENT_DEBOUNCE_MS = 250;
@@ -125,6 +126,7 @@ function isCrossSiteEventRequest(request: Request): boolean {
   if (
     fetchSite != null &&
     fetchSite !== "same-origin" &&
+    fetchSite !== "same-site" &&
     fetchSite !== "none"
   ) {
     return true;
@@ -133,6 +135,10 @@ function isCrossSiteEventRequest(request: Request): boolean {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
   if (origin == null || host == null) {
+    return false;
+  }
+
+  if (isTrustedOrigin(request)) {
     return false;
   }
 

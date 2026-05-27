@@ -16,10 +16,4 @@ export default defineConfig({
     outDir: "dist/client",
     emptyOutDir: true,
   },
-  server: {
-    proxy: {
-      "/api": "http://127.0.0.1:3003",
-      "/events": "http://127.0.0.1:3003",
-    },
-  },
 });

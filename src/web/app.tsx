@@ -30,6 +30,7 @@ import {
   loadWorktrees,
   openProject,
   updatePreferences,
+  apiUrl,
 } from "./api";
 import type { DiffStyle, OverflowMode } from "./diff-viewer";
 
@@ -168,7 +169,8 @@ export function App() {
     }
 
     const events = new EventSource(
-      `/events/project?path=${encodeURIComponent(selectedProjectPath)}`
+      apiUrl(`/events/project?path=${encodeURIComponent(selectedProjectPath)}`),
+      { withCredentials: true }
     );
     events.addEventListener("project-change", () => {
       loadProject(selectedProjectPath, true).catch(() => undefined);
@@ -262,7 +264,7 @@ export function App() {
                 persistPreferences({ selectedMode: mode });
               }}
             >
-              <TabsList className="max-w-full overflow-x-auto">
+              <TabsList className="h-auto flex-wrap justify-start">
                 <TabsTrigger value="branch">Branch</TabsTrigger>
                 <TabsTrigger value="staged">Staged</TabsTrigger>
                 <TabsTrigger value="unstaged">Unstaged</TabsTrigger>

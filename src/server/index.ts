@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import type { HealthResponse } from "../shared/api";
 import { readAuthConfig, requireAccess } from "./http/auth";
+import { localCors } from "./http/cors";
 import { createApiErrorResponse } from "./http/errors";
 import { createDiffRoutes } from "./routes/diffs";
 import { createEventRoutes } from "./routes/events";
@@ -41,10 +42,12 @@ app.use("*", async (context, next) => {
   );
   context.header(
     "Content-Security-Policy",
-    "default-src 'self'; base-uri 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+    "default-src 'self'; base-uri 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:3003 http://localhost:3003; frame-ancestors 'none'"
   );
   await next();
 });
+
+app.use("*", localCors());
 
 app.onError((error, context) => {
   if (error instanceof HTTPException) {

@@ -8,11 +8,14 @@ See `PLAN.md` for the implementation phases and architectural decisions.
 
 ```sh
 bun install
+bun run dev:api
 bun run dev
 ```
 
 - Web: `http://127.0.0.1:5173`
 - API/server: `http://127.0.0.1:3003`
+- Run the server and web commands in separate terminals during development.
+- Set `VITE_API_ORIGIN` only if the Hono server uses a non-default origin.
 
 ## Build And Verify
 

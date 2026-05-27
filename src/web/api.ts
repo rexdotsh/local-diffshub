@@ -9,6 +9,14 @@ import type {
   WorktreesResponse,
 } from "../shared/api";
 
+const API_ORIGIN = import.meta.env.DEV
+  ? (import.meta.env.VITE_API_ORIGIN ?? "http://127.0.0.1:3003")
+  : (import.meta.env.VITE_API_ORIGIN ?? "");
+
+export function apiUrl(path: string): string {
+  return `${API_ORIGIN}${path}`;
+}
+
 export function loadAppState(): Promise<AppState> {
   return getJson("/api/state");
 }
@@ -56,17 +64,17 @@ export async function streamDiff(
   const init: RequestInit = {
     body: JSON.stringify(request),
     cache: "no-store",
-    credentials: "same-origin",
+    credentials: "include",
     headers: { Accept: "text/plain", "Content-Type": "application/json" },
     method: "POST",
-    mode: "same-origin",
+    mode: API_ORIGIN === "" ? "same-origin" : "cors",
     redirect: "error",
   };
   if (signal != null) {
     init.signal = signal;
   }
 
-  const response = await fetch("/api/diffs/stream", init);
+  const response = await fetch(apiUrl("/api/diffs/stream"), init);
 
   if (!response.ok) {
     const message = await readErrorMessage(response);
@@ -91,12 +99,12 @@ async function requestJson<T>(
   url: string,
   init: Pick<RequestInit, "body" | "method">
 ): Promise<T> {
-  const response = await fetch(url, {
+  const response = await fetch(apiUrl(url), {
     ...init,
     cache: "no-store",
-    credentials: "same-origin",
+    credentials: "include",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    mode: "same-origin",
+    mode: API_ORIGIN === "" ? "same-origin" : "cors",
     redirect: "error",
   });
 
