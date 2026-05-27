@@ -1,11 +1,12 @@
 import type {
   AppState,
   BranchesResponse,
+  CommitsResponse,
   DiffMode,
   DiffStreamRequest,
-  UpdatePreferencesRequest,
   ProjectSummary,
   StatusResponse,
+  UpdatePreferencesRequest,
   WorktreesResponse,
 } from "../shared/api";
 
@@ -49,6 +50,10 @@ export function loadWorktrees(path: string): Promise<WorktreesResponse> {
   return postJson("/api/projects/worktrees", { path });
 }
 
+export function loadCommits(path: string): Promise<CommitsResponse> {
+  return postJson("/api/projects/commits", { path });
+}
+
 export function loadStatus(path: string): Promise<StatusResponse> {
   return postJson("/api/projects/status", { path });
 }
@@ -56,10 +61,14 @@ export function loadStatus(path: string): Promise<StatusResponse> {
 export function createDiffRequest(
   path: string,
   mode: DiffMode,
-  branch: string | undefined
+  branch: string | undefined,
+  commit: string | undefined
 ): DiffStreamRequest {
   if (mode === "branch") {
     return { path, mode, branch: branch ?? "" };
+  }
+  if (mode === "commit") {
+    return { path, mode, commit: commit ?? "" };
   }
   return { path, mode };
 }

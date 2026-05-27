@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   listBranches,
+  listCommits,
   listWorktrees,
   readStatus,
 } from "../src/server/git/repository";
@@ -37,6 +38,20 @@ describe("repository git readers", () => {
 
     expect(worktrees).toHaveLength(1);
     expect(worktrees[0]).toMatchObject({ branch: "main", path: repoPath });
+  });
+
+  test("lists recent commits", async () => {
+    const repoPath = await createGitRepository();
+
+    const commits = await listCommits(repoPath);
+
+    expect(commits).toHaveLength(1);
+    expect(commits[0]).toMatchObject({
+      author: "Local Diffhub Test",
+      shortHash: expect.any(String),
+      subject: "initial",
+    });
+    expect(commits[0]?.hash).toHaveLength(40);
   });
 
   test("summarizes working tree status", async () => {

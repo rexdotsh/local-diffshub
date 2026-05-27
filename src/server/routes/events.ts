@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { Hono } from "hono";
 
@@ -28,14 +29,14 @@ export function createEventRoutes(): Hono {
       throw createBadRequest("Project path is required.");
     }
 
-    let repoRoot: string;
+    let project: Awaited<ReturnType<typeof openProject>>;
     try {
-      repoRoot = (await openProject(path)).repoRoot;
+      project = await openProject(path);
     } catch {
       throw createBadRequest("Path must be inside a Git repository.");
     }
 
-    return new Response(createProjectEventStream(repoRoot), {
+    return new Response(createProjectEventStream(project), {
       headers: {
         "Cache-Control": "no-store",
         "Content-Type": "text/event-stream; charset=utf-8",
@@ -48,10 +49,11 @@ export function createEventRoutes(): Hono {
 }
 
 function createProjectEventStream(
-  repoRoot: string
+  project: Awaited<ReturnType<typeof openProject>>
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
-  let watcher: FSWatcher | undefined;
+  const repoRoot = project.repoRoot;
+  const watchers: FSWatcher[] = [];
   let debounce: ReturnType<typeof setTimeout> | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let closed = false;
@@ -66,7 +68,7 @@ function createProjectEventStream(
       clearInterval(heartbeat);
       heartbeat = undefined;
     }
-    await watcher?.close();
+    await Promise.all(watchers.map((watcher) => watcher.close()));
   }
 
   return new ReadableStream<Uint8Array>({
@@ -86,14 +88,20 @@ function createProjectEventStream(
         HEARTBEAT_MS
       );
 
-      watcher = chokidar.watch(repoRoot, {
+      const watcher = chokidar.watch(repoRoot, {
         awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 },
         ignored: /(^|[/\\])(\.git|node_modules|dist)([/\\]|$)/,
         ignoreInitial: true,
         persistent: true,
       });
+      const gitWatcher = chokidar.watch(getGitMetadataWatchPaths(project), {
+        awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 },
+        ignoreInitial: true,
+        persistent: true,
+      });
+      watchers.push(watcher, gitWatcher);
 
-      watcher.on("all", (_eventName, changedPath) => {
+      const onChange = (_eventName: string, changedPath: string) => {
         if (closed) {
           return;
         }
@@ -109,16 +117,33 @@ function createProjectEventStream(
           };
           send("project-change", event);
         }, EVENT_DEBOUNCE_MS);
-      });
+      };
 
-      watcher.on("error", (error) => {
+      watcher.on("all", onChange);
+      gitWatcher.on("all", onChange);
+
+      const onError = (error: unknown) => {
         cleanup().finally(() => controller.error(error));
-      });
+      };
+      watcher.on("error", onError);
+      gitWatcher.on("error", onError);
     },
     async cancel() {
       await cleanup();
     },
   });
+}
+
+function getGitMetadataWatchPaths(
+  project: Awaited<ReturnType<typeof openProject>>
+): string[] {
+  return [
+    join(project.gitDir, "HEAD"),
+    join(project.gitDir, "index"),
+    join(project.commonDir, "refs"),
+    join(project.commonDir, "packed-refs"),
+    join(project.commonDir, "logs"),
+  ];
 }
 
 function isCrossSiteEventRequest(request: Request): boolean {

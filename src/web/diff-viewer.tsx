@@ -12,6 +12,7 @@ import { createGitPatchFileStreamParser } from "./git-patch-stream";
 
 type DiffViewerProps = {
   branch: string | undefined;
+  commit: string | undefined;
   diffStyle: DiffStyle;
   mode: DiffMode;
   overflow: OverflowMode;
@@ -34,6 +35,7 @@ type FileSummary = {
 
 export function DiffViewer({
   branch,
+  commit,
   diffStyle,
   mode,
   overflow,
@@ -55,8 +57,8 @@ export function DiffViewer({
     [diffStyle, overflow]
   );
   const diffRequestState = useMemo(
-    () => ({ branch, mode, path, refreshKey, refreshVersion }),
-    [branch, mode, path, refreshKey, refreshVersion]
+    () => ({ branch, commit, mode, path, refreshKey, refreshVersion }),
+    [branch, commit, mode, path, refreshKey, refreshVersion]
   );
 
   useEffect(() => {
@@ -65,6 +67,7 @@ export function DiffViewer({
       diffRequestState.path,
       diffRequestState.mode,
       diffRequestState.branch ?? "",
+      diffRequestState.commit ?? "",
     ].join("\0");
     const isNewDiff = lastDiffIdentityRef.current !== diffIdentity;
     lastDiffIdentityRef.current = diffIdentity;
@@ -84,12 +87,20 @@ export function DiffViewer({
           setState("empty");
           return;
         }
+        if (
+          diffRequestState.mode === "commit" &&
+          (diffRequestState.commit == null || diffRequestState.commit === "")
+        ) {
+          setState("empty");
+          return;
+        }
 
         const response = await streamDiff(
           createDiffRequest(
             diffRequestState.path,
             diffRequestState.mode,
-            diffRequestState.branch
+            diffRequestState.branch,
+            diffRequestState.commit
           ),
           controller.signal
         );
@@ -101,7 +112,11 @@ export function DiffViewer({
           return;
         }
         setItems(nextItems);
-        setSelectedFileId((current) => current ?? nextItems[0]?.id ?? null);
+        setSelectedFileId((current) =>
+          current != null && nextItems.some((item) => item.id === current)
+            ? current
+            : (nextItems[0]?.id ?? null)
+        );
         setState(nextItems.length === 0 ? "empty" : "ready");
       } catch (loadError) {
         if (controller.signal.aborted) {
@@ -132,7 +147,7 @@ export function DiffViewer({
         <div>
           <h2 className="font-semibold text-lg">Diff viewer</h2>
           <p className="text-muted-foreground text-sm">
-            {modeLabel(mode, branch)} rendered with @pierre/diffs.
+            {modeLabel(mode, branch, commit)} rendered with @pierre/diffs.
           </p>
         </div>
         <div
@@ -358,9 +373,17 @@ function countLines(
   );
 }
 
-function modeLabel(mode: DiffMode, branch: string | undefined): string {
+function modeLabel(
+  mode: DiffMode,
+  branch: string | undefined,
+  commit: string | undefined
+): string {
   if (mode === "branch") {
     return branch == null ? "Branch review" : `Branch review for ${branch}`;
+  }
+
+  if (mode === "commit") {
+    return commit == null ? "Commit review" : `Commit review for ${commit}`;
   }
 
   if (mode === "combined") {

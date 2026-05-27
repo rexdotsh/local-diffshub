@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   BranchSummary,
+  CommitSummary,
   DiffMode,
   ProjectSummary,
   RecentProject,
@@ -26,6 +27,7 @@ import type {
 import {
   loadAppState,
   loadBranches,
+  loadCommits,
   loadStatus,
   loadWorktrees,
   openProject,
@@ -45,12 +47,14 @@ export function App() {
   const [path, setPath] = useState(DEFAULT_PATH);
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
+  const [commits, setCommits] = useState<CommitSummary[]>([]);
   const [worktrees, setWorktrees] = useState<WorktreeSummary[]>([]);
   const [status, setStatus] = useState<StatusSummary | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<DiffMode>("combined");
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>();
+  const [selectedCommit, setSelectedCommit] = useState<string | undefined>();
   const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
   const [overflow, setOverflow] = useState<OverflowMode>("scroll");
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
@@ -96,16 +100,19 @@ export function App() {
       if (!preserveBranch) {
         setProject(null);
         setBranches([]);
+        setCommits([]);
         setWorktrees([]);
         setStatus(null);
       }
       try {
         const nextProject = await openProject(nextPath);
-        const [nextBranches, nextWorktrees, nextStatus] = await Promise.all([
-          loadBranches(nextProject.repoRoot),
-          loadWorktrees(nextProject.repoRoot),
-          loadStatus(nextProject.repoRoot),
-        ]);
+        const [nextBranches, nextCommits, nextWorktrees, nextStatus] =
+          await Promise.all([
+            loadBranches(nextProject.repoRoot),
+            loadCommits(nextProject.repoRoot).catch(() => ({ commits: [] })),
+            loadWorktrees(nextProject.repoRoot),
+            loadStatus(nextProject.repoRoot),
+          ]);
 
         if (requestId !== requestIdRef.current) {
           return;
@@ -115,9 +122,20 @@ export function App() {
           setProject(nextProject);
           setPath(nextProject.repoRoot);
           setBranches(nextBranches.branches);
+          setCommits(nextCommits.commits);
           setWorktrees(nextWorktrees.worktrees);
           setStatus(nextStatus.status);
           setDiffRefreshVersion((version) => version + 1);
+          setSelectedCommit((current) => {
+            if (
+              preserveBranch &&
+              current != null &&
+              nextCommits.commits.some((commit) => commit.hash === current)
+            ) {
+              return current;
+            }
+            return nextCommits.commits[0]?.hash;
+          });
           setSelectedBranch((current) => {
             if (
               preserveBranch &&
@@ -249,6 +267,15 @@ export function App() {
                   loadProject(worktreePath).catch(() => undefined);
                 }}
               />
+              <CommitList
+                commits={commits}
+                selectedCommit={selectedCommit}
+                onSelect={(commit) => {
+                  setSelectedCommit(commit.hash);
+                  setSelectedMode("commit");
+                  persistPreferences({ selectedMode: "commit" });
+                }}
+              />
             </div>
           </ScrollArea>
         </aside>
@@ -266,6 +293,7 @@ export function App() {
             >
               <TabsList className="h-auto flex-wrap justify-start">
                 <TabsTrigger value="branch">Branch</TabsTrigger>
+                <TabsTrigger value="commit">Commit</TabsTrigger>
                 <TabsTrigger value="staged">Staged</TabsTrigger>
                 <TabsTrigger value="unstaged">Unstaged</TabsTrigger>
                 <TabsTrigger value="combined">Worktree</TabsTrigger>
@@ -297,6 +325,7 @@ export function App() {
                   >
                     <DiffViewer
                       branch={selectedBranch}
+                      commit={selectedCommit}
                       diffStyle={diffStyle}
                       mode={selectedMode}
                       overflow={overflow}
@@ -457,4 +486,51 @@ function WorktreeList({
       ))}
     </section>
   );
+}
+
+function CommitList({
+  commits,
+  selectedCommit,
+  onSelect,
+}: {
+  commits: CommitSummary[];
+  selectedCommit: string | undefined;
+  onSelect(commit: CommitSummary): void;
+}) {
+  return (
+    <section className="space-y-2">
+      <h2 className="font-medium text-sm">Recent commits</h2>
+      {commits.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No commits loaded.</p>
+      ) : null}
+      {commits.map((commit) => (
+        <button
+          aria-pressed={selectedCommit === commit.hash}
+          className="w-full rounded-lg border bg-background/60 p-3 text-left text-sm hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          key={commit.hash}
+          onClick={() => onSelect(commit)}
+          type="button"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate font-medium">{commit.subject}</span>
+            <Badge
+              variant={selectedCommit === commit.hash ? "default" : "secondary"}
+            >
+              {commit.shortHash}
+            </Badge>
+          </div>
+          <div className="mt-1 truncate text-muted-foreground text-xs">
+            {commit.author} - {formatCommitDate(commit.committedAt)}
+          </div>
+        </button>
+      ))}
+    </section>
+  );
+}
+
+function formatCommitDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }

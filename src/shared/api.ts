@@ -24,6 +24,7 @@ const diffStyleSchema = z.enum(["split", "unified"]);
 const overflowSchema = z.enum(["scroll", "wrap"]);
 const diffModeSchema = z.enum([
   "branch",
+  "commit",
   "staged",
   "unstaged",
   "combined",
@@ -132,6 +133,18 @@ const statusResponseSchema = z.object({
   status: statusSummarySchema,
 });
 
+const commitSummarySchema = z.object({
+  author: z.string().min(1),
+  committedAt: z.string().datetime({ offset: true }),
+  hash: z.string().min(1),
+  shortHash: z.string().min(1),
+  subject: z.string(),
+});
+
+const commitsResponseSchema = z.object({
+  commits: z.array(commitSummarySchema),
+});
+
 export const diffStreamRequestSchema = z.discriminatedUnion("mode", [
   z.strictObject({
     path: projectPathSchema,
@@ -141,6 +154,11 @@ export const diffStreamRequestSchema = z.discriminatedUnion("mode", [
   z.strictObject({ path: projectPathSchema, mode: z.literal("staged") }),
   z.strictObject({ path: projectPathSchema, mode: z.literal("unstaged") }),
   z.strictObject({ path: projectPathSchema, mode: z.literal("combined") }),
+  z.strictObject({
+    path: projectPathSchema,
+    mode: z.literal("commit"),
+    commit: z.string().min(1),
+  }),
   z.strictObject({
     path: projectPathSchema,
     mode: z.literal("full"),
@@ -169,6 +187,8 @@ export type WorktreesResponse = z.output<typeof worktreesResponseSchema>;
 export type StatusEntry = z.output<typeof statusEntrySchema>;
 export type StatusSummary = z.output<typeof statusSummarySchema>;
 export type StatusResponse = z.output<typeof statusResponseSchema>;
+export type CommitSummary = z.output<typeof commitSummarySchema>;
+export type CommitsResponse = z.output<typeof commitsResponseSchema>;
 export type DiffMode = z.output<typeof diffModeSchema>;
 export type DiffStreamRequest = z.output<typeof diffStreamRequestSchema>;
 export type ProjectChangeEvent = z.output<typeof projectChangeEventSchema>;

@@ -3,6 +3,14 @@ import { GitCommandError, runGit } from "./command";
 import { openProject } from "./project";
 
 const DIFF_BASE_ARGS = ["diff", "--no-ext-diff", "--no-textconv"] as const;
+const SHOW_BASE_ARGS = [
+  "show",
+  "--format=",
+  "--patch",
+  "--first-parent",
+  "--no-ext-diff",
+  "--no-textconv",
+] as const;
 
 export type DiffCommand = {
   args: string[];
@@ -45,6 +53,11 @@ export async function buildDiffCommand(
 
   if (request.mode === "combined") {
     return { cwd: project.repoRoot, args: [...DIFF_BASE_ARGS, "HEAD", "--"] };
+  }
+
+  if (request.mode === "commit") {
+    const commit = await assertCommitRef(project.repoRoot, request.commit);
+    return { cwd: project.repoRoot, args: [...SHOW_BASE_ARGS, commit, "--"] };
   }
 
   if (request.mode === "full") {

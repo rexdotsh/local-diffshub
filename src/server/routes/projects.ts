@@ -7,7 +7,12 @@ import {
   type ProjectSummary,
 } from "../../shared/api";
 import { openProject } from "../git/project";
-import { listBranches, listWorktrees, readStatus } from "../git/repository";
+import {
+  listBranches,
+  listCommits,
+  listWorktrees,
+  readStatus,
+} from "../git/repository";
 import { createBadRequest } from "../http/errors";
 import { parseJsonBody } from "../http/json";
 import type { StateStore } from "../state/store";
@@ -54,6 +59,13 @@ export function createProjectRoutes(store: StateStore): Hono {
     const path = await readProjectPath(context.req.raw);
     return context.json({
       status: await readGitProject(() => readStatus(path)),
+    });
+  });
+
+  app.post("/commits", async (context) => {
+    const path = await readProjectPath(context.req.raw);
+    return context.json({
+      commits: await readGitProject(() => listCommits(path)),
     });
   });
 

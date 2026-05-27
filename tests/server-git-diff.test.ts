@@ -46,6 +46,26 @@ describe("buildDiffCommand", () => {
     });
   });
 
+  test("builds commit diff from a resolved commit", async () => {
+    const repoPath = await createGitRepository();
+    const commit = (await runGitSetup(repoPath, ["rev-parse", "HEAD"])).trim();
+
+    await expect(
+      buildDiffCommand({ path: repoPath, mode: "commit", commit: "HEAD" })
+    ).resolves.toMatchObject({
+      args: [
+        "show",
+        "--format=",
+        "--patch",
+        "--first-parent",
+        "--no-ext-diff",
+        "--no-textconv",
+        commit,
+        "--",
+      ],
+    });
+  });
+
   test("builds full review diff from merge base", async () => {
     const repoPath = await createGitRepository();
     const mergeBase = (

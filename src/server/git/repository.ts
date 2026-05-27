@@ -1,13 +1,15 @@
 import type {
   BranchSummary,
+  CommitSummary,
   StatusEntry,
   StatusSummary,
   WorktreeSummary,
 } from "../../shared/api";
-import { runGit } from "./command";
+import { runGit, tryGit } from "./command";
 import { openProject } from "./project";
 
 const FIELD_SEPARATOR = "\t";
+const COMMIT_FIELD_COUNT = 5;
 
 export async function listBranches(path: string): Promise<BranchSummary[]> {
   const project = await openProject(path);
@@ -44,6 +46,22 @@ export async function readStatus(path: string): Promise<StatusSummary> {
     project.repoRoot
   );
   return parseStatus(output);
+}
+
+export async function listCommits(path: string): Promise<CommitSummary[]> {
+  const project = await openProject(path);
+  const result = await tryGit(
+    [
+      "log",
+      "--max-count=50",
+      "--format=%H%x00%h%x00%an%x00%aI%x00%s%x00",
+      "HEAD",
+      "--",
+    ],
+    { cwd: project.repoRoot }
+  );
+
+  return result == null ? [] : parseCommitLog(result.stdout);
 }
 
 function parseBranchLine(line: string): BranchSummary {
@@ -119,6 +137,42 @@ function parseStatus(output: string): StatusSummary {
       (entry) => entry.staged === "?" && entry.unstaged === "?"
     ).length,
   };
+}
+
+function parseCommitLog(output: string): CommitSummary[] {
+  const fields = output.split("\0").map((field) => field.replace(/^\n+/, ""));
+  if (fields.at(-1) === "") {
+    fields.pop();
+  }
+  if (fields.length % COMMIT_FIELD_COUNT !== 0) {
+    throw new Error("Unable to parse git log output.");
+  }
+
+  const commits: CommitSummary[] = [];
+  for (let index = 0; index < fields.length; index += COMMIT_FIELD_COUNT) {
+    const [hash, shortHash, author, committedAt, subject] = fields.slice(
+      index,
+      index + COMMIT_FIELD_COUNT
+    );
+    if (
+      hash == null ||
+      shortHash == null ||
+      author == null ||
+      committedAt == null
+    ) {
+      throw new Error("Unable to parse git log output.");
+    }
+
+    commits.push({
+      author,
+      committedAt,
+      hash,
+      shortHash,
+      subject: subject ?? "",
+    });
+  }
+
+  return commits;
 }
 
 function parseStatusEntries(tokens: readonly string[]): StatusEntry[] {

@@ -56,7 +56,7 @@ describe("project routes", () => {
     expect(store.paths).toEqual([repoPath]);
   });
 
-  test("returns branches, worktrees, and status", async () => {
+  test("returns branches, commits, worktrees, and status", async () => {
     const repoPath = await createGitRepository();
     const app = createProjectsApp(createMemoryStateStore());
     const body = JSON.stringify({ path: repoPath });
@@ -71,6 +71,11 @@ describe("project routes", () => {
       headers: { "Content-Type": "application/json" },
       method: "POST",
     });
+    const commits = await app.request("/api/projects/commits", {
+      body,
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
     const status = await app.request("/api/projects/status", {
       body,
       headers: { "Content-Type": "application/json" },
@@ -78,6 +83,7 @@ describe("project routes", () => {
     });
 
     expect(branches.status).toBe(200);
+    expect(commits.status).toBe(200);
     expect(worktrees.status).toBe(200);
     expect(status.status).toBe(200);
     expect(await branches.json()).toMatchObject({
@@ -85,6 +91,9 @@ describe("project routes", () => {
     });
     expect(await worktrees.json()).toMatchObject({
       worktrees: [{ branch: "main", path: repoPath }],
+    });
+    expect(await commits.json()).toMatchObject({
+      commits: [{ subject: "initial" }],
     });
     expect(await status.json()).toMatchObject({ status: { branch: "main" } });
   });
