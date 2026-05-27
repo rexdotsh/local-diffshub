@@ -4,9 +4,14 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { fileURLToPath } from "node:url";
 
-import type { HealthResponse } from "@/shared/api";
+import type { HealthResponse } from "../shared/api";
+import { readAuthConfig, requireAccess } from "./http/auth";
+import { createApiErrorResponse } from "./http/errors";
+import { createStateRoutes } from "./routes/state";
+import { createStateStore } from "./state/store";
 
 const DEFAULT_PORT = 3003;
+const hostname = process.env.HOST ?? "127.0.0.1";
 const packageRootUrl = new URL("../../", import.meta.url);
 const clientDistPath = fileURLToPath(new URL("dist/client/", packageRootUrl));
 
@@ -22,6 +27,7 @@ function resolvePort(value: string | undefined): number {
 }
 
 const app = new Hono();
+const stateStore = createStateStore();
 
 app.use("*", async (context, next) => {
   context.header("X-Content-Type-Options", "nosniff");
@@ -32,7 +38,7 @@ app.use("*", async (context, next) => {
   );
   context.header(
     "Content-Security-Policy",
-    "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+    "default-src 'self'; base-uri 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
   );
   await next();
 });
@@ -40,23 +46,22 @@ app.use("*", async (context, next) => {
 app.onError((error, context) => {
   if (error instanceof HTTPException) {
     return context.json(
-      {
-        error: "request_error",
-        message: error.message,
-      },
+      createApiErrorResponse(
+        error.status === 400 ? "bad_request" : "request_error",
+        error.message
+      ),
       error.status
     );
   }
 
   console.error(error);
   return context.json(
-    {
-      error: "internal_error",
-      message: "Internal server error",
-    },
+    createApiErrorResponse("internal_error", "Internal server error"),
     500
   );
 });
+
+app.use("*", requireAccess(readAuthConfig(hostname)));
 
 app.get("/api/health", (context) => {
   const health: HealthResponse = {
@@ -66,17 +71,21 @@ app.get("/api/health", (context) => {
   return context.json(health);
 });
 
+app.route("/api/state", createStateRoutes(stateStore));
+
 app.use("/*", serveStatic({ root: clientDistPath }));
 
 app.notFound(async (context) => {
-  if (new URL(context.req.url).pathname.startsWith("/api/")) {
+  const requestUrl = new URL(context.req.url);
+  if (requestUrl.pathname.startsWith("/api/")) {
     return context.json(
-      {
-        error: "not_found",
-        message: "API route not found",
-      },
+      createApiErrorResponse("not_found", "API route not found"),
       404
     );
+  }
+
+  if (!isSpaNavigationRequest(context.req.raw)) {
+    return context.text("Not found", 404);
   }
 
   let indexFile: Uint8Array;
@@ -94,7 +103,16 @@ app.notFound(async (context) => {
 });
 
 export default {
-  hostname: process.env.HOST ?? "127.0.0.1",
+  hostname,
   port: resolvePort(process.env.PORT),
   fetch: app.fetch,
 };
+
+function isSpaNavigationRequest(request: Request): boolean {
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") {
+    return false;
+  }
+
+  return request.headers.get("accept")?.includes("text/html") === true;
+}

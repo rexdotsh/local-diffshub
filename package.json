@@ -12,7 +12,7 @@
     "build:web": "vite build",
     "build:server": "rm -rf dist/server && bun build src/server/index.ts --target=bun --outdir=dist/server --packages=external",
     "start": "bun run dist/server/index.js",
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "typecheck": "tsgo --build --noEmit tsconfig.json",
     "lint": "bun x ultracite check",
     "fix": "bun x ultracite fix",
     "format": "biome format --write",
