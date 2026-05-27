@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { HealthResponse } from "../shared/api";
 import { readAuthConfig, requireAccess } from "./http/auth";
 import { createApiErrorResponse } from "./http/errors";
+import { createDiffRoutes } from "./routes/diffs";
 import { createProjectRoutes } from "./routes/projects";
 import { createStateRoutes } from "./routes/state";
 import { createStateStore } from "./state/store";
@@ -74,6 +75,7 @@ app.get("/api/health", (context) => {
 
 app.route("/api/state", createStateRoutes(stateStore));
 app.route("/api/projects", createProjectRoutes(stateStore));
+app.route("/api/diffs", createDiffRoutes());
 
 app.use("/*", serveStatic({ root: clientDistPath }));
 

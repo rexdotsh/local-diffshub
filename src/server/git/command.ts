@@ -49,12 +49,11 @@ export async function runGit(
     stderr: "pipe",
     stdout: "pipe",
   });
-  let escalation: ReturnType<typeof setTimeout> | undefined;
   let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timeoutTimer = setTimeout(() => {
       process.kill("SIGTERM");
-      escalation = setTimeout(() => process.kill("SIGKILL"), 250);
+      setTimeout(() => process.kill("SIGKILL"), 250);
       reject(
         new GitCommandError({
           args,
@@ -93,9 +92,6 @@ export async function runGit(
   } finally {
     if (timeoutTimer != null) {
       clearTimeout(timeoutTimer);
-    }
-    if (escalation != null) {
-      clearTimeout(escalation);
     }
   }
 }
@@ -161,7 +157,7 @@ function concatChunks(
   return output;
 }
 
-function createGitEnv(): Record<string, string> {
+export function createGitEnv(): Record<string, string> {
   return {
     GIT_TERMINAL_PROMPT: "0",
     GIT_OPTIONAL_LOCKS: "0",

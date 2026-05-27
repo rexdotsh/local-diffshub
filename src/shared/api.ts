@@ -112,6 +112,30 @@ export const statusResponseSchema = z.object({
   status: statusSummarySchema,
 });
 
+export const diffModeSchema = z.enum([
+  "branch",
+  "staged",
+  "unstaged",
+  "combined",
+  "full",
+]);
+
+export const diffStreamRequestSchema = z.discriminatedUnion("mode", [
+  z.strictObject({
+    path: projectPathSchema,
+    mode: z.literal("branch"),
+    branch: z.string().min(1),
+  }),
+  z.strictObject({ path: projectPathSchema, mode: z.literal("staged") }),
+  z.strictObject({ path: projectPathSchema, mode: z.literal("unstaged") }),
+  z.strictObject({ path: projectPathSchema, mode: z.literal("combined") }),
+  z.strictObject({
+    path: projectPathSchema,
+    mode: z.literal("full"),
+    branch: z.string().min(1).optional(),
+  }),
+]);
+
 export type RecentProject = z.output<typeof recentProjectSchema>;
 export type AppPreferences = z.output<typeof appPreferencesSchema>;
 export type AppState = z.output<typeof appStateSchema>;
@@ -129,3 +153,5 @@ export type WorktreesResponse = z.output<typeof worktreesResponseSchema>;
 export type StatusEntry = z.output<typeof statusEntrySchema>;
 export type StatusSummary = z.output<typeof statusSummarySchema>;
 export type StatusResponse = z.output<typeof statusResponseSchema>;
+export type DiffMode = z.output<typeof diffModeSchema>;
+export type DiffStreamRequest = z.output<typeof diffStreamRequestSchema>;
