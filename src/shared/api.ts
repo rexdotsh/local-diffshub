@@ -22,7 +22,7 @@ const projectPathSchema = z.string().min(1);
 const projectNameSchema = z.string().min(1);
 const diffStyleSchema = z.enum(["split", "unified"]);
 const overflowSchema = z.enum(["scroll", "wrap"]);
-export const diffModeSchema = z.enum([
+const diffModeSchema = z.enum([
   "branch",
   "staged",
   "unstaged",
@@ -30,7 +30,7 @@ export const diffModeSchema = z.enum([
   "full",
 ]);
 
-export const recentProjectSchema = z.object({
+const recentProjectSchema = z.object({
   path: projectPathSchema,
   name: projectNameSchema,
   lastOpenedAt: z.string().datetime(),
@@ -70,13 +70,13 @@ export const projectPathRequestSchema = z.strictObject({
   path: projectPathSchema,
 });
 
-export const defaultBranchSchema = z.object({
+const defaultBranchSchema = z.object({
   name: z.string().min(1),
   ref: z.string().min(1),
   source: z.enum(["origin_head", "local_main", "local_master", "current"]),
 });
 
-export const projectSummarySchema = z.object({
+const projectSummarySchema = z.object({
   path: projectPathSchema,
   repoRoot: z.string().min(1),
   gitDir: z.string().min(1),
@@ -86,7 +86,7 @@ export const projectSummarySchema = z.object({
   isWorktree: z.boolean(),
 });
 
-export const branchSummarySchema = z.object({
+const branchSummarySchema = z.object({
   commit: z.string().min(1),
   current: z.boolean(),
   name: z.string().min(1),
@@ -95,29 +95,29 @@ export const branchSummarySchema = z.object({
   upstream: z.string().min(1).nullable(),
 });
 
-export const branchesResponseSchema = z.object({
+const branchesResponseSchema = z.object({
   branches: z.array(branchSummarySchema),
 });
 
-export const worktreeSummarySchema = z.object({
+const worktreeSummarySchema = z.object({
   branch: z.string().min(1).nullable(),
   commit: z.string().min(1).nullable(),
   detached: z.boolean(),
   path: z.string().min(1),
 });
 
-export const worktreesResponseSchema = z.object({
+const worktreesResponseSchema = z.object({
   worktrees: z.array(worktreeSummarySchema),
 });
 
-export const statusEntrySchema = z.object({
+const statusEntrySchema = z.object({
   originalPath: z.string().min(1).nullable(),
   path: z.string().min(1),
   staged: z.string().min(1),
   unstaged: z.string().min(1),
 });
 
-export const statusSummarySchema = z.object({
+const statusSummarySchema = z.object({
   ahead: z.number().int().nonnegative(),
   behind: z.number().int().nonnegative(),
   branch: z.string().min(1).nullable(),
@@ -128,7 +128,7 @@ export const statusSummarySchema = z.object({
   untracked: z.number().int().nonnegative(),
 });
 
-export const statusResponseSchema = z.object({
+const statusResponseSchema = z.object({
   status: statusSummarySchema,
 });
 
@@ -148,7 +148,7 @@ export const diffStreamRequestSchema = z.discriminatedUnion("mode", [
   }),
 ]);
 
-export const projectChangeEventSchema = z.object({
+const projectChangeEventSchema = z.object({
   changedPath: z.string().min(1),
   repoRoot: z.string().min(1),
   timestamp: z.string().datetime(),
@@ -157,16 +157,11 @@ export const projectChangeEventSchema = z.object({
 export type RecentProject = z.output<typeof recentProjectSchema>;
 export type AppPreferences = z.output<typeof appPreferencesSchema>;
 export type AppState = z.output<typeof appStateSchema>;
-export type UpsertRecentProjectRequest = z.output<
-  typeof upsertRecentProjectRequestSchema
->;
 export type UpdatePreferencesRequest = z.output<
   typeof updatePreferencesRequestSchema
 >;
-export type OpenProjectRequest = z.output<typeof openProjectRequestSchema>;
 export type DefaultBranch = z.output<typeof defaultBranchSchema>;
 export type ProjectSummary = z.output<typeof projectSummarySchema>;
-export type ProjectPathRequest = z.output<typeof projectPathRequestSchema>;
 export type BranchSummary = z.output<typeof branchSummarySchema>;
 export type BranchesResponse = z.output<typeof branchesResponseSchema>;
 export type WorktreeSummary = z.output<typeof worktreeSummarySchema>;

@@ -7,6 +7,7 @@ function createAuthApp(config: AuthConfig): Hono {
   const app = new Hono();
   app.use("*", requireAccess(config));
   app.get("/ok", (context) => context.text("ok"));
+  app.post("/ok", (context) => context.text("ok"));
   return app;
 }
 
@@ -95,7 +96,7 @@ describe("requireAccess", () => {
       },
     });
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
   });
 
   test("accepts matching basic auth credentials", async () => {
