@@ -61,6 +61,24 @@ describe("requireAccess", () => {
     expect(response.status).toBe(401);
   });
 
+  test("blocks cross-site browser mutations", async () => {
+    const app = createAuthApp({
+      allowLocalhostBypass: true,
+      password: undefined,
+      user: undefined,
+    });
+
+    const response = await app.request("/ok", {
+      method: "POST",
+      headers: {
+        host: "localhost:3003",
+        origin: "https://example.com",
+      },
+    });
+
+    expect(response.status).toBe(403);
+  });
+
   test("accepts matching basic auth credentials", async () => {
     const app = createAuthApp({
       allowLocalhostBypass: false,

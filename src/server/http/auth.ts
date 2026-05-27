@@ -1,6 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
 
+import { createApiErrorResponse } from "./errors";
+
 const AUTH_REALM = "Local Diffhub";
 const BASIC_PREFIX = "Basic ";
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -28,6 +30,16 @@ export function requireAccess(config: AuthConfig): MiddlewareHandler {
   const credentials = normalizeCredentials(config);
 
   return async (context, next) => {
+    if (isCrossSiteMutation(context.req.raw)) {
+      return context.json(
+        createApiErrorResponse(
+          "forbidden",
+          "Cross-site requests are not allowed."
+        ),
+        403
+      );
+    }
+
     if (credentials == null) {
       if (
         config.allowLocalhostBypass &&
@@ -39,7 +51,7 @@ export function requireAccess(config: AuthConfig): MiddlewareHandler {
       }
 
       return context.json(
-        { error: "unauthorized", message: "Basic auth is required." },
+        createApiErrorResponse("unauthorized", "Basic auth is required."),
         401,
         unauthorizedHeaders()
       );
@@ -51,7 +63,7 @@ export function requireAccess(config: AuthConfig): MiddlewareHandler {
       !isValidBasicAuth(authorization, credentials)
     ) {
       return context.json(
-        { error: "unauthorized", message: "Invalid credentials." },
+        createApiErrorResponse("unauthorized", "Invalid credentials."),
         401,
         unauthorizedHeaders()
       );
@@ -142,6 +154,33 @@ function hasForwardedHost(headers: Headers): boolean {
     headers.has("x-forwarded-for") ||
     headers.has("x-forwarded-host")
   );
+}
+
+function isCrossSiteMutation(request: Request): boolean {
+  if (["GET", "HEAD", "OPTIONS"].includes(request.method.toUpperCase())) {
+    return false;
+  }
+
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (
+    fetchSite != null &&
+    fetchSite !== "same-origin" &&
+    fetchSite !== "none"
+  ) {
+    return true;
+  }
+
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (origin == null || host == null) {
+    return false;
+  }
+
+  try {
+    return new URL(origin).host !== host;
+  } catch {
+    return true;
+  }
 }
 
 function unauthorizedHeaders(): { "WWW-Authenticate": string } {

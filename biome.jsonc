@@ -3,6 +3,9 @@
   "files": {
     "includes": ["**/*", "!bun.lock", "!dist"]
   },
+  "javascript": {
+    "globals": ["Bun"]
+  },
   "linter": {
     "rules": {
       "suspicious": {
