@@ -20,6 +20,15 @@ export type ApiErrorResponse = {
 
 const projectPathSchema = z.string().min(1);
 const projectNameSchema = z.string().min(1);
+const diffStyleSchema = z.enum(["split", "unified"]);
+const overflowSchema = z.enum(["scroll", "wrap"]);
+export const diffModeSchema = z.enum([
+  "branch",
+  "staged",
+  "unstaged",
+  "combined",
+  "full",
+]);
 
 export const recentProjectSchema = z.object({
   path: projectPathSchema,
@@ -28,12 +37,10 @@ export const recentProjectSchema = z.object({
 });
 
 export const appPreferencesSchema = z.object({
-  diffStyle: z.enum(["split", "unified"]).default("split"),
+  diffStyle: diffStyleSchema.default("split"),
   lastProjectPath: z.string().min(1).optional(),
-  overflow: z.enum(["scroll", "wrap"]).default("scroll"),
-  selectedMode: z
-    .enum(["branch", "staged", "unstaged", "combined", "full"])
-    .default("combined"),
+  overflow: overflowSchema.default("scroll"),
+  selectedMode: diffModeSchema.default("combined"),
   sidebarCollapsed: z.boolean().default(false),
 });
 
@@ -48,12 +55,10 @@ export const upsertRecentProjectRequestSchema = z.strictObject({
 });
 
 export const updatePreferencesRequestSchema = z.strictObject({
-  diffStyle: z.enum(["split", "unified"]).optional(),
+  diffStyle: diffStyleSchema.optional(),
   lastProjectPath: z.string().min(1).optional(),
-  overflow: z.enum(["scroll", "wrap"]).optional(),
-  selectedMode: z
-    .enum(["branch", "staged", "unstaged", "combined", "full"])
-    .optional(),
+  overflow: overflowSchema.optional(),
+  selectedMode: diffModeSchema.optional(),
   sidebarCollapsed: z.boolean().optional(),
 });
 
@@ -126,14 +131,6 @@ export const statusSummarySchema = z.object({
 export const statusResponseSchema = z.object({
   status: statusSummarySchema,
 });
-
-export const diffModeSchema = z.enum([
-  "branch",
-  "staged",
-  "unstaged",
-  "combined",
-  "full",
-]);
 
 export const diffStreamRequestSchema = z.discriminatedUnion("mode", [
   z.strictObject({
