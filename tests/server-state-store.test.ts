@@ -15,7 +15,12 @@ describe("createStateStore", () => {
     const store = createStateStore(await createTemporaryStatePath());
 
     await expect(store.getState()).resolves.toEqual({
-      preferences: { sidebarCollapsed: false },
+      preferences: {
+        diffStyle: "split",
+        overflow: "scroll",
+        selectedMode: "combined",
+        sidebarCollapsed: false,
+      },
       recentProjects: [],
     });
   });

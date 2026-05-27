@@ -4,6 +4,7 @@ import { diffStreamRequestSchema } from "../../shared/api";
 import { createGitEnv } from "../git/command";
 import { buildDiffCommand, type DiffCommand } from "../git/diff";
 import { createBadRequest } from "../http/errors";
+import { parseJsonBody } from "../http/json";
 
 const DIFF_TIMEOUT_MS = 60_000;
 const MAX_DIFF_BYTES = 50 * 1024 * 1024;
@@ -12,16 +13,15 @@ export function createDiffRoutes(): Hono {
   const app = new Hono();
 
   app.post("/stream", async (context) => {
-    const body = diffStreamRequestSchema.safeParse(
-      await readJson(context.req.raw)
+    const body = await parseJsonBody(
+      context.req.raw,
+      diffStreamRequestSchema,
+      "Invalid diff stream payload."
     );
-    if (!body.success) {
-      throw createBadRequest("Invalid diff stream payload.");
-    }
 
     let command: DiffCommand;
     try {
-      command = await buildDiffCommand(body.data);
+      command = await buildDiffCommand(body);
     } catch {
       throw createBadRequest(
         "Unable to create diff for the requested project."
@@ -48,14 +48,6 @@ export function createDiffRoutes(): Hono {
   });
 
   return app;
-}
-
-async function readJson(request: Request): Promise<unknown> {
-  try {
-    return await request.json();
-  } catch {
-    throw createBadRequest("Request body must be valid JSON.");
-  }
 }
 
 function limitDiffStream(

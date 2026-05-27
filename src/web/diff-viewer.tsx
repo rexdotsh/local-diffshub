@@ -12,14 +12,18 @@ import { createGitPatchFileStreamParser } from "./git-patch-stream";
 
 type DiffViewerProps = {
   branch: string | undefined;
+  diffStyle: DiffStyle;
   mode: DiffMode;
+  overflow: OverflowMode;
   path: string;
   refreshKey: number;
+  onDiffStyleChange(diffStyle: DiffStyle): void;
+  onOverflowChange(overflow: OverflowMode): void;
 };
 
 type ViewerState = "idle" | "loading" | "ready" | "empty" | "error";
-type DiffStyle = "split" | "unified";
-type OverflowMode = "scroll" | "wrap";
+export type DiffStyle = "split" | "unified";
+export type OverflowMode = "scroll" | "wrap";
 type FileSummary = {
   additions: number;
   deletions: number;
@@ -30,7 +34,11 @@ type FileSummary = {
 
 export function DiffViewer({
   branch,
+  diffStyle,
   mode,
+  overflow,
+  onDiffStyleChange,
+  onOverflowChange,
   path,
   refreshKey,
 }: DiffViewerProps) {
@@ -38,12 +46,14 @@ export function DiffViewer({
   const [items, setItems] = useState<CodeViewItem[]>([]);
   const [state, setState] = useState<ViewerState>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
-  const [overflow, setOverflow] = useState<OverflowMode>("scroll");
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const lastDiffIdentityRef = useRef<string | null>(null);
   const fileSummaries = useMemo(() => summarizeItems(items), [items]);
+  const codeViewOptions = useMemo(
+    () => ({ diffStyle, overflow }),
+    [diffStyle, overflow]
+  );
   const diffRequestState = useMemo(
     () => ({ branch, mode, path, refreshKey, refreshVersion }),
     [branch, mode, path, refreshKey, refreshVersion]
@@ -135,7 +145,7 @@ export function DiffViewer({
             size="sm"
             type="button"
             variant={diffStyle === "split" ? "default" : "outline"}
-            onClick={() => setDiffStyle("split")}
+            onClick={() => onDiffStyleChange("split")}
           >
             Split
           </Button>
@@ -144,7 +154,7 @@ export function DiffViewer({
             size="sm"
             type="button"
             variant={diffStyle === "unified" ? "default" : "outline"}
-            onClick={() => setDiffStyle("unified")}
+            onClick={() => onDiffStyleChange("unified")}
           >
             Unified
           </Button>
@@ -154,7 +164,7 @@ export function DiffViewer({
             type="button"
             variant={overflow === "wrap" ? "default" : "outline"}
             onClick={() =>
-              setOverflow((current) => (current === "wrap" ? "scroll" : "wrap"))
+              onOverflowChange(overflow === "wrap" ? "scroll" : "wrap")
             }
           >
             {overflow === "wrap" ? "Line wrap on" : "Line wrap off"}
@@ -193,10 +203,7 @@ export function DiffViewer({
               ref={codeViewRef}
               disableWorkerPool
               items={items}
-              options={{
-                diffStyle,
-                overflow,
-              }}
+              options={codeViewOptions}
               style={{ height: "calc(100svh - 16rem)" }}
             />
           </div>

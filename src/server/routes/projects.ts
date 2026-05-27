@@ -9,21 +9,22 @@ import {
 import { openProject } from "../git/project";
 import { listBranches, listWorktrees, readStatus } from "../git/repository";
 import { createBadRequest } from "../http/errors";
+import { parseJsonBody } from "../http/json";
 import type { StateStore } from "../state/store";
 
 export function createProjectRoutes(store: StateStore): Hono {
   const app = new Hono();
 
   app.post("/open", async (context) => {
-    const json = await readJson(context.req.raw);
-    const body = openProjectRequestSchema.safeParse(json);
-    if (!body.success) {
-      throw createBadRequest("Invalid project open payload.");
-    }
+    const body = await parseJsonBody(
+      context.req.raw,
+      openProjectRequestSchema,
+      "Invalid project open payload."
+    );
 
     let project: ProjectSummary;
     try {
-      project = await openProject(body.data.path);
+      project = await openProject(body.path);
     } catch {
       throw createBadRequest("Path must be inside a Git repository.");
     }
@@ -60,11 +61,12 @@ export function createProjectRoutes(store: StateStore): Hono {
 }
 
 async function readProjectPath(request: Request): Promise<string> {
-  const body = projectPathRequestSchema.safeParse(await readJson(request));
-  if (!body.success) {
-    throw createBadRequest("Invalid project path payload.");
-  }
-  return body.data.path;
+  const body = await parseJsonBody(
+    request,
+    projectPathRequestSchema,
+    "Invalid project path payload."
+  );
+  return body.path;
 }
 
 async function readGitProject<T>(read: () => Promise<T>): Promise<T> {
@@ -72,13 +74,5 @@ async function readGitProject<T>(read: () => Promise<T>): Promise<T> {
     return await read();
   } catch {
     throw createBadRequest("Path must be inside a Git repository.");
-  }
-}
-
-async function readJson(request: Request): Promise<unknown> {
-  try {
-    return await request.json();
-  } catch {
-    throw createBadRequest("Request body must be valid JSON.");
   }
 }

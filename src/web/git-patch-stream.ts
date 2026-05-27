@@ -9,31 +9,32 @@ export type GitPatchFileStreamParser = {
 
 export function createGitPatchFileStreamParser(): GitPatchFileStreamParser {
   let pendingLine = "";
-  let pendingMetadata = "";
-  let currentFile = "";
+  let pendingMetadata: string[] = [];
+  let currentFile: string[] = [];
   const availableFiles: string[] = [];
 
   const queueCurrentFile = () => {
-    if (NON_WHITESPACE_PATTERN.test(currentFile)) {
-      availableFiles.push(currentFile);
+    const fileText = currentFile.join("");
+    if (NON_WHITESPACE_PATTERN.test(fileText)) {
+      availableFiles.push(fileText);
     }
-    currentFile = "";
+    currentFile = [];
   };
 
   const processLine = (line: string) => {
     if (line.startsWith(GIT_FILE_BOUNDARY)) {
       queueCurrentFile();
-      currentFile = `${pendingMetadata}${line}`;
-      pendingMetadata = "";
+      currentFile = [...pendingMetadata, line];
+      pendingMetadata = [];
       return;
     }
 
     if (currentFile.length > 0) {
-      currentFile += line;
+      currentFile.push(line);
       return;
     }
 
-    pendingMetadata += line;
+    pendingMetadata.push(line);
   };
 
   return {

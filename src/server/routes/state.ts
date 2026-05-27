@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 
-import { upsertRecentProjectRequestSchema } from "../../shared/api";
-import { createBadRequest } from "../http/errors";
+import {
+  updatePreferencesRequestSchema,
+  upsertRecentProjectRequestSchema,
+} from "../../shared/api";
+import { parseJsonBody } from "../http/json";
 import type { StateStore } from "../state/store";
 
 export function createStateRoutes(store: StateStore): Hono {
@@ -12,26 +15,28 @@ export function createStateRoutes(store: StateStore): Hono {
   });
 
   app.post("/recent-projects", async (context) => {
-    let json: unknown;
-    try {
-      json = await context.req.json();
-    } catch {
-      throw createBadRequest("Request body must be valid JSON.");
-    }
+    const body = await parseJsonBody(
+      context.req.raw,
+      upsertRecentProjectRequestSchema,
+      "Invalid recent project payload."
+    );
 
-    const body = upsertRecentProjectRequestSchema.safeParse(json);
-    if (!body.success) {
-      throw createBadRequest("Invalid recent project payload.");
-    }
-
-    const projectPath = body.data.path;
+    const projectPath = body.path;
     return context.json(
       await store.upsertRecentProject({
         path: projectPath,
-        name:
-          body.data.name ?? projectPath.split(/[\\/]/).at(-1) ?? projectPath,
+        name: body.name ?? projectPath.split(/[\\/]/).at(-1) ?? projectPath,
       })
     );
+  });
+
+  app.patch("/preferences", async (context) => {
+    const body = await parseJsonBody(
+      context.req.raw,
+      updatePreferencesRequestSchema,
+      "Invalid preferences payload."
+    );
+    return context.json(await store.updatePreferences(body));
   });
 
   return app;

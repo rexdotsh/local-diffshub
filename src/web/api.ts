@@ -1,11 +1,26 @@
 import type {
+  AppState,
   BranchesResponse,
   DiffMode,
   DiffStreamRequest,
+  UpdatePreferencesRequest,
   ProjectSummary,
   StatusResponse,
   WorktreesResponse,
 } from "../shared/api";
+
+export function loadAppState(): Promise<AppState> {
+  return getJson("/api/state");
+}
+
+export function updatePreferences(
+  preferences: UpdatePreferencesRequest
+): Promise<AppState> {
+  return requestJson("/api/state/preferences", {
+    body: JSON.stringify(preferences),
+    method: "PATCH",
+  });
+}
 
 export function openProject(path: string): Promise<ProjectSummary> {
   return postJson("/api/projects/open", { path });
@@ -61,13 +76,26 @@ export async function streamDiff(
   return response;
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
+function postJson<T>(url: string, body: unknown): Promise<T> {
+  return requestJson(url, {
     body: JSON.stringify(body),
+    method: "POST",
+  });
+}
+
+function getJson<T>(url: string): Promise<T> {
+  return requestJson(url, { method: "GET" });
+}
+
+async function requestJson<T>(
+  url: string,
+  init: Pick<RequestInit, "body" | "method">
+): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
     cache: "no-store",
     credentials: "same-origin",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    method: "POST",
     mode: "same-origin",
     redirect: "error",
   });

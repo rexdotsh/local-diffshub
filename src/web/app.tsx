@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   startTransition,
   useCallback,
   useEffect,
@@ -16,15 +18,27 @@ import type {
   BranchSummary,
   DiffMode,
   ProjectSummary,
+  RecentProject,
   StatusSummary,
+  UpdatePreferencesRequest,
   WorktreeSummary,
 } from "../shared/api";
-import { loadBranches, loadStatus, loadWorktrees, openProject } from "./api";
-import { DiffViewer } from "./diff-viewer";
+import {
+  loadAppState,
+  loadBranches,
+  loadStatus,
+  loadWorktrees,
+  openProject,
+  updatePreferences,
+} from "./api";
+import type { DiffStyle, OverflowMode } from "./diff-viewer";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
 const DEFAULT_PATH = "/home/majdoor/diffs";
+const DiffViewer = lazy(() =>
+  import("./diff-viewer").then((module) => ({ default: module.DiffViewer }))
+);
 
 export function App() {
   const [path, setPath] = useState(DEFAULT_PATH);
@@ -36,9 +50,42 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<DiffMode>("combined");
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>();
+  const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
+  const [overflow, setOverflow] = useState<OverflowMode>("scroll");
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [diffRefreshVersion, setDiffRefreshVersion] = useState(0);
   const requestIdRef = useRef(0);
+  const preferenceWriteRef = useRef(Promise.resolve());
   const selectedProjectPath = project?.repoRoot;
+
+  const persistPreferences = useCallback(
+    (preferences: UpdatePreferencesRequest) => {
+      preferenceWriteRef.current = preferenceWriteRef.current
+        .then(() => updatePreferences(preferences))
+        .then(
+          () => undefined,
+          () => undefined
+        );
+    },
+    []
+  );
+
+  const refreshPersistedState = useCallback(
+    async (applyPreferences = false) => {
+      const state = await loadAppState();
+      setRecentProjects(state.recentProjects);
+      if (applyPreferences) {
+        setSelectedMode(state.preferences.selectedMode);
+        setDiffStyle(state.preferences.diffStyle);
+        setOverflow(state.preferences.overflow);
+      }
+      if (state.preferences.lastProjectPath != null) {
+        setPath(state.preferences.lastProjectPath);
+      }
+      return state;
+    },
+    []
+  );
 
   const loadProject = useCallback(
     async (nextPath: string, preserveBranch = false): Promise<void> => {
@@ -82,6 +129,7 @@ export function App() {
           });
           setLoadState("ready");
         });
+        refreshPersistedState(false).catch(() => undefined);
       } catch (loadError) {
         if (requestId !== requestIdRef.current) {
           return;
@@ -94,8 +142,25 @@ export function App() {
         setLoadState("error");
       }
     },
-    []
+    [refreshPersistedState]
   );
+
+  useEffect(() => {
+    let mounted = true;
+    refreshPersistedState(true)
+      .then((state) => {
+        if (!(mounted && state.preferences.lastProjectPath != null)) {
+          return;
+        }
+        loadProject(state.preferences.lastProjectPath, true).catch(
+          () => undefined
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, [loadProject, refreshPersistedState]);
 
   useEffect(() => {
     if (selectedProjectPath == null) {
@@ -153,6 +218,15 @@ export function App() {
                 {error}
               </p>
             )}
+            {recentProjects.length === 0 ? null : (
+              <RecentProjects
+                projects={recentProjects}
+                onOpen={(projectPath) => {
+                  setPath(projectPath);
+                  loadProject(projectPath).catch(() => undefined);
+                }}
+              />
+            )}
           </div>
           <Separator />
           <ScrollArea className="lg:h-[calc(100svh-15rem)]">
@@ -163,9 +237,16 @@ export function App() {
                 onSelect={(branch) => {
                   setSelectedBranch(branch.name);
                   setSelectedMode("branch");
+                  persistPreferences({ selectedMode: "branch" });
                 }}
               />
-              <WorktreeList worktrees={worktrees} />
+              <WorktreeList
+                worktrees={worktrees}
+                onOpen={(worktreePath) => {
+                  setPath(worktreePath);
+                  loadProject(worktreePath).catch(() => undefined);
+                }}
+              />
             </div>
           </ScrollArea>
         </aside>
@@ -175,7 +256,11 @@ export function App() {
             <ProjectHeader project={project} status={status} />
             <Tabs
               value={selectedMode}
-              onValueChange={(value) => setSelectedMode(value as DiffMode)}
+              onValueChange={(value) => {
+                const mode = value as DiffMode;
+                setSelectedMode(mode);
+                persistPreferences({ selectedMode: mode });
+              }}
             >
               <TabsList className="max-w-full overflow-x-auto">
                 <TabsTrigger value="branch">Branch</TabsTrigger>
@@ -201,12 +286,30 @@ export function App() {
                     </div>
                   </div>
                 ) : (
-                  <DiffViewer
-                    branch={selectedBranch}
-                    mode={selectedMode}
-                    path={project.repoRoot}
-                    refreshKey={diffRefreshVersion}
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="rounded-xl border bg-card p-5 text-muted-foreground text-sm shadow-sm">
+                        Loading diff renderer...
+                      </div>
+                    }
+                  >
+                    <DiffViewer
+                      branch={selectedBranch}
+                      diffStyle={diffStyle}
+                      mode={selectedMode}
+                      overflow={overflow}
+                      path={project.repoRoot}
+                      refreshKey={diffRefreshVersion}
+                      onDiffStyleChange={(nextDiffStyle) => {
+                        setDiffStyle(nextDiffStyle);
+                        persistPreferences({ diffStyle: nextDiffStyle });
+                      }}
+                      onOverflowChange={(nextOverflow) => {
+                        setOverflow(nextOverflow);
+                        persistPreferences({ overflow: nextOverflow });
+                      }}
+                    />
+                  </Suspense>
                 )}
               </TabsContent>
             </Tabs>
@@ -214,6 +317,35 @@ export function App() {
         </section>
       </div>
     </main>
+  );
+}
+
+function RecentProjects({
+  projects,
+  onOpen,
+}: {
+  projects: RecentProject[];
+  onOpen(path: string): void;
+}) {
+  return (
+    <section className="space-y-2">
+      <h2 className="font-medium text-sm">Recent projects</h2>
+      <div className="space-y-1">
+        {projects.slice(0, 5).map((project) => (
+          <button
+            className="w-full rounded-lg border bg-background/60 px-3 py-2 text-left text-sm hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            key={project.path}
+            onClick={() => onOpen(project.path)}
+            type="button"
+          >
+            <span className="block truncate font-medium">{project.name}</span>
+            <span className="block truncate text-muted-foreground text-xs">
+              {project.path}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -272,6 +404,9 @@ function BranchList({
   return (
     <section className="space-y-2">
       <h2 className="font-medium text-sm">Branches</h2>
+      {branches.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No branches loaded.</p>
+      ) : null}
       {branches.map((branch) => (
         <button
           className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-sidebar-accent"
@@ -292,20 +427,31 @@ function BranchList({
   );
 }
 
-function WorktreeList({ worktrees }: { worktrees: WorktreeSummary[] }) {
+function WorktreeList({
+  worktrees,
+  onOpen,
+}: {
+  worktrees: WorktreeSummary[];
+  onOpen(path: string): void;
+}) {
   return (
     <section className="space-y-2">
       <h2 className="font-medium text-sm">Worktrees</h2>
+      {worktrees.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No worktrees loaded.</p>
+      ) : null}
       {worktrees.map((worktree) => (
-        <div
-          className="rounded-lg border bg-background/60 p-3 text-sm"
+        <button
+          className="w-full rounded-lg border bg-background/60 p-3 text-left text-sm hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           key={worktree.path}
+          onClick={() => onOpen(worktree.path)}
+          type="button"
         >
           <div className="font-medium">{worktree.branch ?? "Detached"}</div>
           <div className="truncate text-muted-foreground text-xs">
             {worktree.path}
           </div>
-        </div>
+        </button>
       ))}
     </section>
   );

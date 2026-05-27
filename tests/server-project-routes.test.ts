@@ -6,6 +6,7 @@ import { createApiErrorResponse } from "../src/server/http/errors";
 import { createProjectRoutes } from "../src/server/routes/projects";
 import type { StateStore } from "../src/server/state/store";
 import { createGitRepository } from "./git-test-utils";
+import { createMemoryStateStore } from "./state-test-utils";
 
 function createProjectsApp(store: StateStore): Hono {
   const app = new Hono();
@@ -26,41 +27,14 @@ function createProjectsApp(store: StateStore): Hono {
   return app;
 }
 
-function createMemoryStore(): StateStore & { paths: string[] } {
-  const paths: string[] = [];
-  return {
-    paths,
-    getState() {
-      return Promise.resolve({
-        preferences: { sidebarCollapsed: false },
-        recentProjects: [],
-      });
-    },
-    upsertRecentProject(project) {
-      paths.push(project.path);
-      return Promise.resolve({
-        preferences: {
-          lastProjectPath: project.path,
-          sidebarCollapsed: false,
-        },
-        recentProjects: [
-          {
-            ...project,
-            lastOpenedAt: new Date().toISOString(),
-          },
-        ],
-      });
-    },
-  };
-}
-
 describe("project routes", () => {
   test("returns bad request for malformed JSON", async () => {
-    const app = createProjectsApp(createMemoryStore());
+    const app = createProjectsApp(createMemoryStateStore());
 
     const response = await app.request("/api/projects/open", {
       body: "not json",
       method: "POST",
+      headers: { "Content-Type": "application/json" },
     });
 
     expect(response.status).toBe(400);
@@ -69,11 +43,12 @@ describe("project routes", () => {
 
   test("opens a repo and records the repo root", async () => {
     const repoPath = await createGitRepository();
-    const store = createMemoryStore();
+    const store = createMemoryStateStore();
     const app = createProjectsApp(store);
 
     const response = await app.request("/api/projects/open", {
       body: JSON.stringify({ path: repoPath }),
+      headers: { "Content-Type": "application/json" },
       method: "POST",
     });
 
@@ -83,19 +58,22 @@ describe("project routes", () => {
 
   test("returns branches, worktrees, and status", async () => {
     const repoPath = await createGitRepository();
-    const app = createProjectsApp(createMemoryStore());
+    const app = createProjectsApp(createMemoryStateStore());
     const body = JSON.stringify({ path: repoPath });
 
     const branches = await app.request("/api/projects/branches", {
       body,
+      headers: { "Content-Type": "application/json" },
       method: "POST",
     });
     const worktrees = await app.request("/api/projects/worktrees", {
       body,
+      headers: { "Content-Type": "application/json" },
       method: "POST",
     });
     const status = await app.request("/api/projects/status", {
       body,
+      headers: { "Content-Type": "application/json" },
       method: "POST",
     });
 
@@ -112,10 +90,11 @@ describe("project routes", () => {
   });
 
   test("returns bad request for read endpoints outside git repos", async () => {
-    const app = createProjectsApp(createMemoryStore());
+    const app = createProjectsApp(createMemoryStateStore());
 
     const response = await app.request("/api/projects/status", {
       body: JSON.stringify({ path: "/definitely/missing/local-diffhub" }),
+      headers: { "Content-Type": "application/json" },
       method: "POST",
     });
 

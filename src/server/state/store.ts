@@ -4,6 +4,8 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 import {
   type AppState,
+  appPreferencesSchema,
+  type UpdatePreferencesRequest,
   appStateSchema,
   type RecentProject,
 } from "../../shared/api";
@@ -15,6 +17,7 @@ export type StateStore = {
   upsertRecentProject(
     project: Pick<RecentProject, "name" | "path">
   ): Promise<AppState>;
+  updatePreferences(preferences: UpdatePreferencesRequest): Promise<AppState>;
 };
 
 export function createStateStore(statePath = resolveStatePath()): StateStore {
@@ -42,6 +45,27 @@ export function createStateStore(statePath = resolveStatePath()): StateStore {
             lastProjectPath: project.path,
           },
           recentProjects,
+        };
+        await writeState(statePath, nextState);
+        return nextState;
+      };
+
+      const result = writeQueue.then(write, write);
+      writeQueue = result.then(
+        () => undefined,
+        () => undefined
+      );
+      return result;
+    },
+    updatePreferences(preferences) {
+      const write = async () => {
+        const state = await readState(statePath);
+        const nextState: AppState = {
+          ...state,
+          preferences: appPreferencesSchema.parse({
+            ...state.preferences,
+            ...preferences,
+          }),
         };
         await writeState(statePath, nextState);
         return nextState;

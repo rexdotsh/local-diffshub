@@ -33,3 +33,11 @@ LOCAL_DIFFHUB_PASSWORD=...
 ```
 
 The app only runs read-only Git commands. It never checks out branches, stages files, applies patches, or mutates worktrees.
+
+## Operations
+
+- Diff streams are capped at 50 MiB and 60 seconds per request.
+- JSON API bodies are capped at 64 KiB.
+- Git command helper output is capped to avoid unbounded memory use.
+- The diff viewer is lazy-loaded; large Shiki language chunks in production builds are expected.
+- SSE file watching ignores `.git`, `node_modules`, and `dist`; very large repos may still hit OS watcher limits.

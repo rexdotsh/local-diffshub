@@ -28,18 +28,33 @@ export const recentProjectSchema = z.object({
 });
 
 export const appPreferencesSchema = z.object({
+  diffStyle: z.enum(["split", "unified"]).default("split"),
   lastProjectPath: z.string().min(1).optional(),
+  overflow: z.enum(["scroll", "wrap"]).default("scroll"),
+  selectedMode: z
+    .enum(["branch", "staged", "unstaged", "combined", "full"])
+    .default("combined"),
   sidebarCollapsed: z.boolean().default(false),
 });
 
 export const appStateSchema = z.object({
   recentProjects: z.array(recentProjectSchema).default([]),
-  preferences: appPreferencesSchema.default({ sidebarCollapsed: false }),
+  preferences: z.preprocess((value) => value ?? {}, appPreferencesSchema),
 });
 
 export const upsertRecentProjectRequestSchema = z.strictObject({
   path: projectPathSchema,
   name: projectNameSchema.optional(),
+});
+
+export const updatePreferencesRequestSchema = z.strictObject({
+  diffStyle: z.enum(["split", "unified"]).optional(),
+  lastProjectPath: z.string().min(1).optional(),
+  overflow: z.enum(["scroll", "wrap"]).optional(),
+  selectedMode: z
+    .enum(["branch", "staged", "unstaged", "combined", "full"])
+    .optional(),
+  sidebarCollapsed: z.boolean().optional(),
 });
 
 export const openProjectRequestSchema = z.strictObject({
@@ -147,6 +162,9 @@ export type AppPreferences = z.output<typeof appPreferencesSchema>;
 export type AppState = z.output<typeof appStateSchema>;
 export type UpsertRecentProjectRequest = z.output<
   typeof upsertRecentProjectRequestSchema
+>;
+export type UpdatePreferencesRequest = z.output<
+  typeof updatePreferencesRequestSchema
 >;
 export type OpenProjectRequest = z.output<typeof openProjectRequestSchema>;
 export type DefaultBranch = z.output<typeof defaultBranchSchema>;
