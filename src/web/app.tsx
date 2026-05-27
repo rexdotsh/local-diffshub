@@ -19,13 +19,7 @@ import type {
   StatusSummary,
   WorktreeSummary,
 } from "../shared/api";
-import {
-  createDiffRequestPreview,
-  loadBranches,
-  loadStatus,
-  loadWorktrees,
-  openProject,
-} from "./api";
+import { loadBranches, loadStatus, loadWorktrees, openProject } from "./api";
 import { DiffViewer } from "./diff-viewer";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
@@ -42,6 +36,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<DiffMode>("combined");
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>();
+  const [diffRefreshVersion, setDiffRefreshVersion] = useState(0);
   const requestIdRef = useRef(0);
   const selectedProjectPath = project?.repoRoot;
 
@@ -50,6 +45,12 @@ export function App() {
       const requestId = ++requestIdRef.current;
       setLoadState("loading");
       setError(null);
+      if (!preserveBranch) {
+        setProject(null);
+        setBranches([]);
+        setWorktrees([]);
+        setStatus(null);
+      }
       try {
         const nextProject = await openProject(nextPath);
         const [nextBranches, nextWorktrees, nextStatus] = await Promise.all([
@@ -68,6 +69,7 @@ export function App() {
           setBranches(nextBranches.branches);
           setWorktrees(nextWorktrees.worktrees);
           setStatus(nextStatus.status);
+          setDiffRefreshVersion((version) => version + 1);
           setSelectedBranch((current) => {
             if (
               preserveBranch &&
@@ -81,6 +83,9 @@ export function App() {
           setLoadState("ready");
         });
       } catch (loadError) {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
         setError(
           loadError instanceof Error
             ? loadError.message
@@ -105,15 +110,6 @@ export function App() {
     });
     return () => events.close();
   }, [loadProject, selectedProjectPath]);
-
-  const diffURL =
-    project == null
-      ? null
-      : createDiffRequestPreview(
-          project.repoRoot,
-          selectedMode,
-          selectedBranch
-        );
 
   return (
     <main className="min-h-svh bg-[radial-gradient(circle_at_top_left,var(--accent),transparent_26rem),var(--background)] text-foreground">
@@ -181,7 +177,7 @@ export function App() {
               value={selectedMode}
               onValueChange={(value) => setSelectedMode(value as DiffMode)}
             >
-              <TabsList>
+              <TabsList className="max-w-full overflow-x-auto">
                 <TabsTrigger value="branch">Branch</TabsTrigger>
                 <TabsTrigger value="staged">Staged</TabsTrigger>
                 <TabsTrigger value="unstaged">Unstaged</TabsTrigger>
@@ -193,23 +189,23 @@ export function App() {
                   <div className="rounded-xl border bg-card p-5 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h2 className="font-semibold text-xl">Diff request</h2>
+                        <h2 className="font-semibold text-xl">
+                          Open a project
+                        </h2>
                         <p className="text-muted-foreground text-sm">
-                          Pierre viewer integration lands next. This shell
-                          already resolves a valid stream payload.
+                          Enter a local Git repository path to review branches,
+                          worktree changes, staged changes, or a full diff.
                         </p>
                       </div>
                       <Badge variant="secondary">{selectedMode}</Badge>
                     </div>
-                    <pre className="mt-4 overflow-auto rounded-lg bg-muted p-4 text-muted-foreground text-xs">
-                      {diffURL ?? "Open a project to prepare a diff request."}
-                    </pre>
                   </div>
                 ) : (
                   <DiffViewer
                     branch={selectedBranch}
                     mode={selectedMode}
                     path={project.repoRoot}
+                    refreshKey={diffRefreshVersion}
                   />
                 )}
               </TabsContent>

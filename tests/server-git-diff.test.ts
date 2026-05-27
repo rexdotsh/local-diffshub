@@ -13,9 +13,15 @@ describe("buildDiffCommand", () => {
       mode: "branch",
       branch: "feature/demo",
     });
+    const mainCommit = (
+      await runGitSetup(repoPath, ["rev-parse", "main"])
+    ).trim();
+    const branchCommit = (
+      await runGitSetup(repoPath, ["rev-parse", "feature/demo"])
+    ).trim();
 
     expect(command.cwd).toBe(repoPath);
-    expect(command.args).toContain("main...feature/demo");
+    expect(command.args[3]).toBe(`${mainCommit}...${branchCommit}`);
     expect(command.args).toContain("--no-ext-diff");
     expect(command.args).toContain("--no-textconv");
   });
@@ -42,17 +48,22 @@ describe("buildDiffCommand", () => {
 
   test("builds full review diff from merge base", async () => {
     const repoPath = await createGitRepository();
+    const mergeBase = (
+      await runGitSetup(repoPath, ["merge-base", "main", "main"])
+    ).trim();
 
     await expect(
       buildDiffCommand({ path: repoPath, mode: "full", branch: "main" })
     ).resolves.toMatchObject({
-      args: [
-        "diff",
-        "--no-ext-diff",
-        "--no-textconv",
-        expect.any(String),
-        "--",
-      ],
+      args: ["diff", "--no-ext-diff", "--no-textconv", mergeBase, "--"],
     });
+  });
+
+  test("rejects unknown branch refs", async () => {
+    const repoPath = await createGitRepository();
+
+    await expect(
+      buildDiffCommand({ path: repoPath, mode: "branch", branch: "missing" })
+    ).rejects.toThrow("Unknown Git ref: missing");
   });
 });

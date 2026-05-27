@@ -18,14 +18,17 @@ export async function buildDiffCommand(
     if (request.branch == null) {
       throw new Error("Branch diff mode requires a branch.");
     }
-    await assertCommitRef(project.repoRoot, request.branch);
+    const defaultCommit = await assertCommitRef(
+      project.repoRoot,
+      project.defaultBranch.ref
+    );
+    const branchCommit = await assertCommitRef(
+      project.repoRoot,
+      request.branch
+    );
     return {
       cwd: project.repoRoot,
-      args: [
-        ...DIFF_BASE_ARGS,
-        `${project.defaultBranch.ref}...${request.branch}`,
-        "--",
-      ],
+      args: [...DIFF_BASE_ARGS, `${defaultCommit}...${branchCommit}`, "--"],
     };
   }
 
@@ -49,9 +52,13 @@ export async function buildDiffCommand(
     if (branch == null) {
       return { cwd: project.repoRoot, args: [...DIFF_BASE_ARGS, "HEAD", "--"] };
     }
-    await assertCommitRef(project.repoRoot, branch);
+    const defaultCommit = await assertCommitRef(
+      project.repoRoot,
+      project.defaultBranch.ref
+    );
+    const branchCommit = await assertCommitRef(project.repoRoot, branch);
     const mergeBase = await gitStdout(
-      ["merge-base", project.defaultBranch.ref, branch],
+      ["merge-base", defaultCommit, branchCommit],
       project.repoRoot
     );
     return {
@@ -63,9 +70,16 @@ export async function buildDiffCommand(
   throw new Error("Unsupported diff mode.");
 }
 
-async function assertCommitRef(cwd: string, ref: string): Promise<void> {
+async function assertCommitRef(cwd: string, ref: string): Promise<string> {
   try {
-    await runGit(["rev-parse", "--verify", `${ref}^{commit}`], { cwd });
+    return (
+      await runGit(
+        ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`],
+        {
+          cwd,
+        }
+      )
+    ).stdout.trim();
   } catch (error) {
     if (error instanceof GitCommandError) {
       throw new Error(`Unknown Git ref: ${ref}`);

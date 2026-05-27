@@ -25,7 +25,8 @@ Build a read-only local Git review daemon in `/home/majdoor/diffs` using Bun, Ho
 - [x] Phase 5: Hot reload SSE watcher lifecycle and debounced client invalidation.
 - [x] Phase 6: shadcn React shell for project opener, sidebar navigation, and review mode selection.
 - [x] Phase 7: Pierre diff viewer parser integration.
-- [ ] Phase 8: File tree/controls, final verification, simplification pass, and documentation.
+- [x] Phase 8: File tree/controls, final verification, simplification pass, and documentation.
+- [ ] Phase 9: Persisted UI state, recent projects, final polish, hardening, and release push.
 
 ## Review Loop
 

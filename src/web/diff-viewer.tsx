@@ -1,8 +1,11 @@
 import { type CodeViewItem, processFile } from "@pierre/diffs";
-import { CodeView } from "@pierre/diffs/react";
-import { useEffect, useState } from "react";
+import { CodeView, type CodeViewHandle } from "@pierre/diffs/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import type { DiffMode } from "../shared/api";
 import { createDiffRequest, streamDiff } from "./api";
 import { createGitPatchFileStreamParser } from "./git-patch-stream";
@@ -11,30 +14,73 @@ type DiffViewerProps = {
   branch: string | undefined;
   mode: DiffMode;
   path: string;
+  refreshKey: number;
 };
 
 type ViewerState = "idle" | "loading" | "ready" | "empty" | "error";
+type DiffStyle = "split" | "unified";
+type OverflowMode = "scroll" | "wrap";
+type FileSummary = {
+  additions: number;
+  deletions: number;
+  id: string;
+  name: string;
+  status: string;
+};
 
-export function DiffViewer({ branch, mode, path }: DiffViewerProps) {
+export function DiffViewer({
+  branch,
+  mode,
+  path,
+  refreshKey,
+}: DiffViewerProps) {
+  const codeViewRef = useRef<CodeViewHandle<undefined>>(null);
   const [items, setItems] = useState<CodeViewItem[]>([]);
   const [state, setState] = useState<ViewerState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
+  const [overflow, setOverflow] = useState<OverflowMode>("scroll");
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const lastDiffIdentityRef = useRef<string | null>(null);
+  const fileSummaries = useMemo(() => summarizeItems(items), [items]);
+  const diffRequestState = useMemo(
+    () => ({ branch, mode, path, refreshKey, refreshVersion }),
+    [branch, mode, path, refreshKey, refreshVersion]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
-    setItems([]);
+    const diffIdentity = [
+      diffRequestState.path,
+      diffRequestState.mode,
+      diffRequestState.branch ?? "",
+    ].join("\0");
+    const isNewDiff = lastDiffIdentityRef.current !== diffIdentity;
+    lastDiffIdentityRef.current = diffIdentity;
+    if (isNewDiff) {
+      setItems([]);
+      setSelectedFileId(null);
+    }
     setError(null);
     setState("loading");
 
     async function loadDiff() {
       try {
-        if (mode === "branch" && (branch == null || branch === "")) {
+        if (
+          diffRequestState.mode === "branch" &&
+          (diffRequestState.branch == null || diffRequestState.branch === "")
+        ) {
           setState("empty");
           return;
         }
 
         const response = await streamDiff(
-          createDiffRequest(path, mode, branch),
+          createDiffRequest(
+            diffRequestState.path,
+            diffRequestState.mode,
+            diffRequestState.branch
+          ),
           controller.signal
         );
         if (controller.signal.aborted) {
@@ -45,6 +91,7 @@ export function DiffViewer({ branch, mode, path }: DiffViewerProps) {
           return;
         }
         setItems(nextItems);
+        setSelectedFileId((current) => current ?? nextItems[0]?.id ?? null);
         setState(nextItems.length === 0 ? "empty" : "ready");
       } catch (loadError) {
         if (controller.signal.aborted) {
@@ -59,46 +106,146 @@ export function DiffViewer({ branch, mode, path }: DiffViewerProps) {
       }
     }
 
-    loadDiff().catch((loadError: unknown) => {
-      setError(
-        loadError instanceof Error ? loadError.message : "Unable to load diff."
-      );
-      setState("error");
-    });
+    loadDiff();
 
     return () => controller.abort();
-  }, [branch, mode, path]);
+  }, [diffRequestState]);
+
+  const selectFile = (id: string) => {
+    setSelectedFileId(id);
+    codeViewRef.current?.scrollTo({ align: "start", id, type: "item" });
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
         <div>
           <h2 className="font-semibold text-lg">Diff viewer</h2>
           <p className="text-muted-foreground text-sm">
-            Rendered with @pierre/diffs.
+            {modeLabel(mode, branch)} rendered with @pierre/diffs.
           </p>
         </div>
-        <Badge variant="secondary">{state}</Badge>
+        <div
+          aria-label="Diff viewer controls"
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+        >
+          <Button
+            aria-pressed={diffStyle === "split"}
+            size="sm"
+            type="button"
+            variant={diffStyle === "split" ? "default" : "outline"}
+            onClick={() => setDiffStyle("split")}
+          >
+            Split
+          </Button>
+          <Button
+            aria-pressed={diffStyle === "unified"}
+            size="sm"
+            type="button"
+            variant={diffStyle === "unified" ? "default" : "outline"}
+            onClick={() => setDiffStyle("unified")}
+          >
+            Unified
+          </Button>
+          <Button
+            aria-pressed={overflow === "wrap"}
+            size="sm"
+            type="button"
+            variant={overflow === "wrap" ? "default" : "outline"}
+            onClick={() =>
+              setOverflow((current) => (current === "wrap" ? "scroll" : "wrap"))
+            }
+          >
+            {overflow === "wrap" ? "Line wrap on" : "Line wrap off"}
+          </Button>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() => setRefreshVersion((version) => version + 1)}
+          >
+            Reload
+          </Button>
+          <Badge variant="secondary">{state}</Badge>
+          <Badge variant="secondary">{fileSummaries.length} files</Badge>
+        </div>
       </div>
       {state === "error" ? (
-        <p className="p-4 text-destructive text-sm">{error}</p>
+        <p className="p-4 text-destructive text-sm" role="alert">
+          {error}
+        </p>
       ) : state === "empty" ? (
         <p className="p-4 text-muted-foreground text-sm">
           No diff for this mode.
         </p>
-      ) : state === "loading" ? (
+      ) : state === "loading" && items.length === 0 ? (
         <p className="p-4 text-muted-foreground text-sm">Loading diff...</p>
       ) : (
-        <CodeView
-          disableWorkerPool
-          items={items}
-          options={{
-            diffStyle: "split",
-          }}
-          style={{ height: "calc(100svh - 16rem)" }}
-        />
+        <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[18rem_1fr]">
+          <FileNavigator
+            files={fileSummaries}
+            selectedFileId={selectedFileId}
+            onSelectFile={selectFile}
+          />
+          <div className="min-w-0 border-t lg:border-t-0 lg:border-l">
+            <CodeView
+              ref={codeViewRef}
+              disableWorkerPool
+              items={items}
+              options={{
+                diffStyle,
+                overflow,
+              }}
+              style={{ height: "calc(100svh - 16rem)" }}
+            />
+          </div>
+        </div>
       )}
     </div>
+  );
+}
+
+function FileNavigator({
+  files,
+  selectedFileId,
+  onSelectFile,
+}: {
+  files: FileSummary[];
+  selectedFileId: string | null;
+  onSelectFile(id: string): void;
+}) {
+  return (
+    <nav aria-label="Changed files" className="bg-sidebar/40">
+      <div className="flex items-center justify-between px-3 py-2">
+        <span className="font-medium text-sm">Files</span>
+        <Badge variant="secondary">{files.length}</Badge>
+      </div>
+      <Separator />
+      <ScrollArea className="max-h-80 lg:h-[calc(100svh-18.8rem)] lg:max-h-none">
+        <ul className="space-y-1 p-2">
+          {files.map((file) => (
+            <li key={file.id}>
+              <button
+                aria-current={selectedFileId === file.id ? "true" : undefined}
+                className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-sidebar-accent aria-current:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => onSelectFile(file.id)}
+                type="button"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate">{file.name}</span>
+                  <Badge variant="secondary">{file.status}</Badge>
+                </div>
+                <div className="mt-1 flex gap-2 text-muted-foreground text-xs">
+                  <span className="text-emerald-600">+{file.additions}</span>
+                  <span className="text-red-600">-{file.deletions}</span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </ScrollArea>
+    </nav>
   );
 }
 
@@ -173,4 +320,49 @@ function appendItem(fileText: string, items: CodeViewItem[]): void {
     type: "diff",
     version: 0,
   });
+}
+
+function summarizeItems(items: readonly CodeViewItem[]): FileSummary[] {
+  return items.flatMap((item) => {
+    if (item.type !== "diff") {
+      return [];
+    }
+
+    return [
+      {
+        additions: countLines(item.fileDiff, "addition"),
+        deletions: countLines(item.fileDiff, "deletion"),
+        id: item.id,
+        name: item.fileDiff.name,
+        status: item.fileDiff.type,
+      },
+    ];
+  });
+}
+
+function countLines(
+  fileDiff: Extract<CodeViewItem, { type: "diff" }>["fileDiff"],
+  type: "addition" | "deletion"
+): number {
+  return fileDiff.hunks.reduce(
+    (count, hunk) =>
+      count + (type === "addition" ? hunk.additionLines : hunk.deletionLines),
+    0
+  );
+}
+
+function modeLabel(mode: DiffMode, branch: string | undefined): string {
+  if (mode === "branch") {
+    return branch == null ? "Branch review" : `Branch review for ${branch}`;
+  }
+
+  if (mode === "combined") {
+    return "Worktree changes";
+  }
+
+  if (mode === "full") {
+    return "Full review";
+  }
+
+  return mode === "staged" ? "Staged changes" : "Unstaged changes";
 }

@@ -23,14 +23,6 @@ export function loadStatus(path: string): Promise<StatusResponse> {
   return postJson("/api/projects/status", { path });
 }
 
-export function createDiffRequestPreview(
-  path: string,
-  mode: DiffMode,
-  branch?: string
-): string {
-  return JSON.stringify(createDiffRequest(path, mode, branch), null, 2);
-}
-
 export function createDiffRequest(
   path: string,
   mode: DiffMode,
