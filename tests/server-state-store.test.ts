@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
 
+import { appPreferencesSchema } from "../src/shared/api";
 import { createStateStore } from "../src/server/state/store";
 
 async function createTemporaryStatePath(): Promise<string> {
@@ -15,12 +16,7 @@ describe("createStateStore", () => {
     const store = createStateStore(await createTemporaryStatePath());
 
     await expect(store.getState()).resolves.toEqual({
-      preferences: {
-        diffStyle: "split",
-        overflow: "scroll",
-        selectedMode: "combined",
-        sidebarCollapsed: false,
-      },
+      preferences: appPreferencesSchema.parse({}),
       recentProjects: [],
     });
   });

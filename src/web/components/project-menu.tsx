@@ -25,7 +25,7 @@ type ProjectMenuProps = {
 };
 
 const TRIGGER_CLASS =
-  "inline-flex h-8 min-w-0 items-center gap-2 rounded-md border border-border/70 bg-card/40 px-2 text-xs hover:bg-input/40 aria-expanded:bg-muted";
+  "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border border-border/60 bg-card/40 px-2 text-xs hover:bg-input/40 aria-expanded:bg-muted";
 
 export function ProjectMenu({
   onOpen,
@@ -71,9 +71,9 @@ export function ProjectMenu({
       <DropdownMenuTrigger className={TRIGGER_CLASS}>
         <IconFolderOpen
           aria-hidden
-          className="size-3.5 shrink-0 text-muted-foreground"
+          className="size-3 shrink-0 text-muted-foreground"
         />
-        <span className="flex min-w-0 flex-col items-start leading-tight">
+        <span className="flex min-w-0 items-baseline gap-1.5 leading-none">
           <span className="truncate font-medium">{projectLabel}</span>
           <span
             aria-hidden

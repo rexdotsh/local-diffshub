@@ -29,7 +29,7 @@ const RELATIVE_UNITS: ReadonlyArray<{
 ];
 
 const TRIGGER_CLASS =
-  "inline-flex h-8 items-center gap-2 rounded-md border border-border/70 bg-card/40 px-2 text-xs hover:bg-input/40 aria-expanded:bg-muted";
+  "inline-flex h-7 items-center gap-1.5 rounded-md border border-border/60 bg-card/40 px-2 text-xs hover:bg-input/40 aria-expanded:bg-muted";
 
 type RefMenuProps = {
   branches: BranchSummary[];

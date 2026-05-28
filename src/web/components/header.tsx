@@ -1,5 +1,6 @@
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 
+import { cn } from "@/lib/utils";
 import type {
   BranchSummary,
   CommitSummary,
@@ -8,20 +9,43 @@ import type {
   RecentProject,
   WorktreeSummary,
 } from "../../shared/api";
-import type { DiffStyle, OverflowMode } from "../types";
+import type { ColorMode, DarkTheme, LightTheme } from "../data/themes";
+import type {
+  DiffIndicators,
+  DiffStyle,
+  HunkSeparatorStyle,
+  OverflowMode,
+} from "../types";
 import { ModeTabs } from "./mode-tabs";
 import { ProjectMenu } from "./project-menu";
 import { RefMenu } from "./ref-menu";
+import { ThemeMenu } from "./theme-menu";
 import { ViewMenu } from "./view-menu";
 
 type HeaderProps = {
   branches: BranchSummary[];
+  chromeStyle?: CSSProperties | undefined;
+  collapseMode: "expanded" | "collapsed";
+  colorMode: ColorMode;
   commits: CommitSummary[];
+  darkTheme: DarkTheme;
+  diffIndicators: DiffIndicators;
   diffStyle: DiffStyle;
+  hunkSeparators: HunkSeparatorStyle;
+  lightTheme: LightTheme;
+  lineNumbers: boolean;
   mode: DiffMode;
+  onChangeCollapseMode(mode: "expanded" | "collapsed"): void;
+  onChangeColorMode(mode: ColorMode): void;
+  onChangeDarkTheme(theme: DarkTheme): void;
+  onChangeDiffIndicators(indicators: DiffIndicators): void;
   onChangeDiffStyle(style: DiffStyle): void;
+  onChangeHunkSeparators(separators: HunkSeparatorStyle): void;
+  onChangeLightTheme(theme: LightTheme): void;
+  onChangeLineNumbers(enabled: boolean): void;
   onChangeMode(mode: DiffMode): void;
   onChangeOverflow(overflow: OverflowMode): void;
+  onChangeShowBackgrounds(show: boolean): void;
   onOpenProject(path: string): void;
   onReload(): void;
   onSelectBranch(branch: string): void;
@@ -31,17 +55,34 @@ type HeaderProps = {
   recentProjects: RecentProject[];
   selectedBranch: string | undefined;
   selectedCommit: string | undefined;
+  showBackgrounds: boolean;
   worktrees: WorktreeSummary[];
 };
 
 export const Header = memo(function Header({
   branches,
+  chromeStyle,
+  collapseMode,
+  colorMode,
   commits,
+  darkTheme,
+  diffIndicators,
   diffStyle,
+  hunkSeparators,
+  lightTheme,
+  lineNumbers,
   mode,
+  onChangeCollapseMode,
+  onChangeColorMode,
+  onChangeDarkTheme,
+  onChangeDiffIndicators,
   onChangeDiffStyle,
+  onChangeHunkSeparators,
+  onChangeLightTheme,
+  onChangeLineNumbers,
   onChangeMode,
   onChangeOverflow,
+  onChangeShowBackgrounds,
   onOpenProject,
   onReload,
   onSelectBranch,
@@ -51,18 +92,17 @@ export const Header = memo(function Header({
   recentProjects,
   selectedBranch,
   selectedCommit,
+  showBackgrounds,
   worktrees,
 }: HeaderProps) {
   return (
-    <header className="z-10 flex h-12 items-center gap-2 border-b border-border/60 bg-[var(--app-header-bg)] px-3">
-      <span
-        aria-label="Local Diffhub"
-        className="inline-flex size-7 items-center justify-center rounded-md border border-border/70 bg-card/40 text-[10px] font-bold tracking-tight"
-        role="img"
-        title="Local Diffhub"
-      >
-        DH
-      </span>
+    <header
+      className={cn(
+        "z-10 flex h-11 items-center gap-2 border-b border-[var(--color-border-opaque,var(--border))] px-3",
+        chromeStyle == null && "bg-[var(--app-header-bg)]"
+      )}
+      style={chromeStyle}
+    >
       <ProjectMenu
         onOpen={onOpenProject}
         project={project}
@@ -79,14 +119,35 @@ export const Header = memo(function Header({
         selectedBranch={selectedBranch}
         selectedCommit={selectedCommit}
       />
-      <div className="ml-auto" />
-      <ViewMenu
-        diffStyle={diffStyle}
-        onChangeDiffStyle={onChangeDiffStyle}
-        onChangeOverflow={onChangeOverflow}
-        onReload={onReload}
-        overflow={overflow}
-      />
+      <div className="ml-auto inline-flex items-center gap-0.5">
+        <ThemeMenu
+          colorMode={colorMode}
+          contentStyle={chromeStyle}
+          darkTheme={darkTheme}
+          lightTheme={lightTheme}
+          onChangeColorMode={onChangeColorMode}
+          onChangeDarkTheme={onChangeDarkTheme}
+          onChangeLightTheme={onChangeLightTheme}
+        />
+        <ViewMenu
+          collapseMode={collapseMode}
+          contentStyle={chromeStyle}
+          diffIndicators={diffIndicators}
+          diffStyle={diffStyle}
+          hunkSeparators={hunkSeparators}
+          lineNumbers={lineNumbers}
+          onChangeCollapseMode={onChangeCollapseMode}
+          onChangeDiffIndicators={onChangeDiffIndicators}
+          onChangeDiffStyle={onChangeDiffStyle}
+          onChangeHunkSeparators={onChangeHunkSeparators}
+          onChangeLineNumbers={onChangeLineNumbers}
+          onChangeOverflow={onChangeOverflow}
+          onChangeShowBackgrounds={onChangeShowBackgrounds}
+          onReload={onReload}
+          overflow={overflow}
+          showBackgrounds={showBackgrounds}
+        />
+      </div>
     </header>
   );
 });

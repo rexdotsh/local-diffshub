@@ -22,6 +22,15 @@ const projectPathSchema = z.string().min(1);
 const projectNameSchema = z.string().min(1);
 const diffStyleSchema = z.enum(["split", "unified"]);
 const overflowSchema = z.enum(["scroll", "wrap"]);
+const diffIndicatorsSchema = z.enum(["bars", "classic", "none"]);
+const hunkSeparatorsSchema = z.enum([
+  "simple",
+  "metadata",
+  "line-info",
+  "line-info-basic",
+]);
+const colorModeSchema = z.enum(["system", "light", "dark"]);
+const collapseModeSchema = z.enum(["expanded", "collapsed"]);
 const diffModeSchema = z.enum([
   "branch",
   "commit",
@@ -38,10 +47,18 @@ const recentProjectSchema = z.object({
 });
 
 export const appPreferencesSchema = z.object({
+  collapseMode: collapseModeSchema.default("expanded"),
+  colorMode: colorModeSchema.default("system"),
+  darkTheme: z.string().min(1).default("diffhub-dark"),
+  diffIndicators: diffIndicatorsSchema.default("bars"),
   diffStyle: diffStyleSchema.default("split"),
+  hunkSeparators: hunkSeparatorsSchema.default("line-info"),
   lastProjectPath: z.string().min(1).optional(),
+  lightTheme: z.string().min(1).default("diffhub-light"),
+  lineNumbers: z.boolean().default(true),
   overflow: overflowSchema.default("scroll"),
   selectedMode: diffModeSchema.default("combined"),
+  showBackgrounds: z.boolean().default(true),
   sidebarCollapsed: z.boolean().default(false),
 });
 
@@ -56,10 +73,18 @@ export const upsertRecentProjectRequestSchema = z.strictObject({
 });
 
 export const updatePreferencesRequestSchema = z.strictObject({
+  collapseMode: collapseModeSchema.optional(),
+  colorMode: colorModeSchema.optional(),
+  darkTheme: z.string().min(1).optional(),
+  diffIndicators: diffIndicatorsSchema.optional(),
   diffStyle: diffStyleSchema.optional(),
+  hunkSeparators: hunkSeparatorsSchema.optional(),
   lastProjectPath: z.string().min(1).optional(),
+  lightTheme: z.string().min(1).optional(),
+  lineNumbers: z.boolean().optional(),
   overflow: overflowSchema.optional(),
   selectedMode: diffModeSchema.optional(),
+  showBackgrounds: z.boolean().optional(),
   sidebarCollapsed: z.boolean().optional(),
 });
 

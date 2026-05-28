@@ -1,9 +1,9 @@
-import darkSoftTheme from "@pierre/theme/pierre-dark-soft";
-import {
-  type FileTreeBatchOperation,
-  type FileTree as FileTreeModel,
-  type FileTreeOptions,
-  themeToTreeStyles,
+import type { DiffsThemeNames } from "@pierre/diffs";
+import type {
+  FileTreeBatchOperation,
+  FileTree as FileTreeModel,
+  FileTreeOptions,
+  FileTreeSortComparator,
 } from "@pierre/trees";
 import { FileTree, useFileTree } from "@pierre/trees/react";
 import {
@@ -11,22 +11,22 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
 } from "react";
 
 import type { TreeSource } from "../data/accumulator";
+import { useResolvedTreeThemeStyles } from "../data/use-theme-chrome";
 
 const TREE_ITEM_HEIGHT = 24;
 
-const PIERRE_TREE_STYLES: CSSProperties = {
-  ...themeToTreeStyles(darkSoftTheme),
-  // Diffhub overrides layered on top of the theme; these are the
-  // documented `*-override` slots that win over Pierre's defaults.
-  "--trees-bg-override": "var(--app-sidebar-bg)",
-  "--trees-bg-muted-override": "var(--app-muted)",
+// Preserve input order so the sidebar follows the patch sequence.
+const PRESERVE_INPUT_ORDER_SORT: FileTreeSortComparator = () => 0;
+
+const DENSITY_OVERRIDE_STYLES: CSSProperties = {
   "--trees-density-override": 0.85,
   "--trees-padding-inline-override": 8,
-  "--trees-selected-fg-override": "var(--app-foreground-strong)",
+  "--trees-git-renamed-color-override": "light-dark(#007aff, #007aff)",
 } as CSSProperties;
 
 const TREE_UNSAFE_CSS = `
@@ -39,7 +39,7 @@ const TREE_UNSAFE_CSS = `
 }
 [data-item-contains-git-change='true'] > [data-item-section='git'] { display: none; }
 [data-item-type='folder'] {
-  color: color-mix(in lab, white 25%, var(--trees-fg));
+  color: color-mix(in lab, light-dark(#000, #fff) 25%, var(--trees-fg));
   font-weight: 500;
 }
 `;
@@ -50,17 +50,26 @@ const BASE_FILE_TREE_OPTIONS = {
   initialExpansion: "open",
   itemHeight: TREE_ITEM_HEIGHT,
   search: true,
+  sort: PRESERVE_INPUT_ORDER_SORT,
   stickyFolders: true,
   unsafeCSS: TREE_UNSAFE_CSS,
 } as const satisfies Partial<FileTreeOptions>;
 
 type DiffFileTreeProps = {
+  darkTheme: DiffsThemeNames;
+  lightTheme: DiffsThemeNames;
+  onModelReady(model: FileTreeModel | null): void;
   onSelectPath(itemId: string): void;
+  resolvedColorMode: "light" | "dark";
   source: TreeSource;
 };
 
 export const DiffFileTree = memo(function DiffFileTree({
+  darkTheme,
+  lightTheme,
+  onModelReady,
   onSelectPath,
+  resolvedColorMode,
   source,
 }: DiffFileTreeProps) {
   const sourceRef = useRef(source);
@@ -68,6 +77,16 @@ export const DiffFileTree = memo(function DiffFileTree({
   const onSelectPathRef = useRef(onSelectPath);
   sourceRef.current = source;
   onSelectPathRef.current = onSelectPath;
+
+  const themeStyles = useResolvedTreeThemeStyles(
+    lightTheme,
+    darkTheme,
+    resolvedColorMode
+  );
+  const mergedStyles = useMemo<CSSProperties>(
+    () => ({ ...themeStyles, ...DENSITY_OVERRIDE_STYLES }),
+    [themeStyles]
+  );
 
   const initialPathsRef = useRef<readonly string[] | null>(null);
   initialPathsRef.current ??= source.paths.slice(0, source.pathCount);
@@ -103,11 +122,16 @@ export const DiffFileTree = memo(function DiffFileTree({
     syncTreeModel(model, previous, source);
   }, [model, source]);
 
+  useEffect(() => {
+    onModelReady(model);
+    return () => onModelReady(null);
+  }, [model, onModelReady]);
+
   return (
     <FileTree
       className="h-full min-h-0 overflow-auto overscroll-contain"
       model={model}
-      style={PIERRE_TREE_STYLES}
+      style={mergedStyles}
     />
   );
 });

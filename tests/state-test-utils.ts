@@ -8,12 +8,7 @@ import type { StateStore } from "../src/server/state/store";
 export function createMemoryStateStore(): StateStore & { paths: string[] } {
   const paths: string[] = [];
   const recentProjects: RecentProject[] = [];
-  let preferences: AppPreferences = {
-    diffStyle: "split",
-    overflow: "scroll",
-    selectedMode: "combined",
-    sidebarCollapsed: false,
-  };
+  let preferences: AppPreferences = appPreferencesSchema.parse({});
   return {
     paths,
     getState() {

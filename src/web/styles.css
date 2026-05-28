@@ -71,8 +71,12 @@
 
   --app-header-bg: oklch(0.2 0.005 270);
   --app-sidebar-bg: oklch(0.17 0.005 270);
-  --app-foreground-strong: oklch(0.985 0 0);
   --app-muted: oklch(0.27 0.006 270);
+
+  /* Cold-start fallbacks before the themed chrome resolves. */
+  --color-border-opaque: var(--border);
+  --diffhub-add-fg: oklch(0.78 0.16 155);
+  --diffhub-del-fg: oklch(0.7 0.18 18);
 }
 
 @layer base {

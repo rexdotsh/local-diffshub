@@ -20,6 +20,8 @@ import {
   type TreeSource,
 } from "./accumulator";
 
+export type CollapseMode = "expanded" | "collapsed";
+
 const PUBLISH_FILE_BATCH = 12;
 const PUBLISH_INTERVAL_MS = 80;
 const INITIAL_PUBLISH_FILE_BATCH = 24;
@@ -28,6 +30,7 @@ const INITIAL_PUBLISH_INTERVAL_MS = 250;
 export type LoadState = "idle" | "streaming" | "ready" | "empty" | "error";
 
 export type DiffSession = {
+  applyCollapseModeToLoaded(mode: CollapseMode): void;
   error: string | null;
   items: readonly CodeViewItem[];
   loadState: LoadState;
@@ -40,6 +43,7 @@ export type DiffSession = {
 
 type DiffSessionInput = {
   branch: string | undefined;
+  collapseMode: CollapseMode;
   commit: string | undefined;
   enabled: boolean;
   mode: DiffMode;
@@ -50,6 +54,7 @@ const EMPTY_ITEMS: readonly CodeViewItem[] = [];
 
 export function useDiffSession({
   branch,
+  collapseMode,
   commit,
   enabled,
   mode,
@@ -64,8 +69,57 @@ export function useDiffSession({
   const [reloadVersion, setReloadVersion] = useState(0);
   const viewerRef = useRef<CodeViewHandle<undefined> | null>(null);
 
+  // Mirror collapseMode for the streaming loader's long-lived closure.
+  const collapseModeRef = useRef<CollapseMode>(collapseMode);
+  collapseModeRef.current = collapseMode;
+
+  // Ids handed to the viewer; viewer has no enumeration API.
+  const loadedItemIdsRef = useRef<Set<string>>(new Set());
+
   const reload = useCallback(() => {
-    setReloadVersion((version) => version + 1);
+    setReloadVersion((v) => v + 1);
+  }, []);
+
+  const prepareForViewer = useCallback(
+    (newItems: readonly CodeViewItem[]): readonly CodeViewItem[] => {
+      const targetCollapsed = collapseModeRef.current === "collapsed";
+      for (const item of newItems) {
+        loadedItemIdsRef.current.add(item.id);
+        if (item.type === "diff") item.collapsed = targetCollapsed;
+      }
+      return newItems;
+    },
+    []
+  );
+
+  const applyCollapseModeToLoaded = useCallback((next: CollapseMode) => {
+    const targetCollapsed = next === "collapsed";
+    const viewer = viewerRef.current;
+
+    // No viewer mounted → normalize items array so the next mount is correct.
+    if (viewer == null) {
+      setItems((prev) => {
+        let changed = false;
+        const out = prev.map((item) => {
+          if (item.type !== "diff" || !!item.collapsed === targetCollapsed) {
+            return item;
+          }
+          changed = true;
+          return { ...item, collapsed: targetCollapsed };
+        });
+        return changed ? out : prev;
+      });
+      return;
+    }
+    // Viewer mounted → drive it imperatively; items array stays untouched.
+    for (const itemId of loadedItemIdsRef.current) {
+      const item = viewer.getItem(itemId);
+      if (item == null || item.type !== "diff") continue;
+      if (!!item.collapsed === targetCollapsed) continue;
+      item.collapsed = targetCollapsed;
+      item.version = (typeof item.version === "number" ? item.version : 0) + 1;
+      viewer.updateItem(item);
+    }
   }, []);
 
   useEffect(() => {
@@ -98,6 +152,7 @@ export function useDiffSession({
     setError(null);
     setLoadState("streaming");
     setViewerKey((key) => key + 1);
+    loadedItemIdsRef.current = new Set();
 
     loadDiffStream({
       accumulator,
@@ -115,6 +170,7 @@ export function useDiffSession({
         setLoadState("error");
       },
       onPublish(newItems) {
+        prepareForViewer(newItems);
         setItems((current) => [...current, ...newItems]);
         setTreeSource(snapshotTreeSource(accumulator));
         setStats({ ...accumulator.stats });
@@ -123,9 +179,10 @@ export function useDiffSession({
     });
 
     return () => controller.abort();
-  }, [branch, commit, enabled, mode, path, reloadVersion]);
+  }, [branch, commit, enabled, mode, path, prepareForViewer, reloadVersion]);
 
   return {
+    applyCollapseModeToLoaded,
     error,
     items,
     loadState,

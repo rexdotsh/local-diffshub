@@ -9,7 +9,7 @@ type DiffStatsBarProps = {
 
 export function DiffStatsBar({ stats, streaming }: DiffStatsBarProps) {
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-[var(--app-sidebar-bg)] px-3 py-2 text-xs">
+    <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border-opaque,var(--border))] px-3 py-2 text-xs">
       <div className="flex min-w-0 items-center gap-3 text-muted-foreground tabular-nums">
         <Stat
           icon={<IconFile aria-hidden className="size-3" />}
@@ -17,13 +17,13 @@ export function DiffStatsBar({ stats, streaming }: DiffStatsBarProps) {
           value={stats?.fileCount ?? 0}
         />
         <Stat
-          className="text-emerald-400"
+          className="text-[var(--diffhub-add-fg,#34d399)]"
           icon={<IconDiffAddFill aria-hidden className="size-3" />}
           label="added"
           value={stats?.addedLines ?? 0}
         />
         <Stat
-          className="text-red-400"
+          className="text-[var(--diffhub-del-fg,#fb7185)]"
           icon={<IconDiffDeletedFill aria-hidden className="size-3" />}
           label="removed"
           value={stats?.deletedLines ?? 0}

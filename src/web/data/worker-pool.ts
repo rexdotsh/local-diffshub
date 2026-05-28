@@ -4,6 +4,9 @@ import type {
   WorkerPoolOptions,
 } from "@pierre/diffs/react";
 
+import "./custom-themes";
+import { DEFAULT_DARK_THEME, DEFAULT_LIGHT_THEME } from "./themes";
+
 const MAX_POOL_SIZE = 3;
 const FALLBACK_POOL_SIZE = 2;
 
@@ -20,7 +23,7 @@ function resolvePoolSize(): number {
 
 export const HIGHLIGHTER_OPTIONS: WorkerInitializationRenderOptions = {
   preferredHighlighter: "shiki-wasm",
-  theme: { dark: "pierre-dark-soft", light: "pierre-light-soft" },
+  theme: { dark: DEFAULT_DARK_THEME, light: DEFAULT_LIGHT_THEME },
   useTokenTransformer: true,
 };
 
