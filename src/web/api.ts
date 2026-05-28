@@ -5,7 +5,6 @@ import type {
   DiffMode,
   DiffStreamRequest,
   ProjectSummary,
-  StatusResponse,
   UpdatePreferencesRequest,
   WorktreesResponse,
 } from "../shared/api";
@@ -58,10 +57,6 @@ export function loadCommits(
     path,
     branch,
   });
-}
-
-export function loadStatus(path: string): Promise<StatusResponse> {
-  return postJson("/api/projects/status", { path });
 }
 
 export function createDiffRequest(

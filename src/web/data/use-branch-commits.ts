@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CommitSummary } from "../../shared/api";
 import { loadCommits } from "../api";
 
-export type BranchCommitsLoadState = "idle" | "loading" | "ready" | "error";
+type BranchCommitsLoadState = "idle" | "loading" | "ready" | "error";
 
 export type BranchCommitsState = {
   commits: readonly CommitSummary[];
