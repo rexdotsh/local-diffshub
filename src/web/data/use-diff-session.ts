@@ -172,6 +172,8 @@ export function useDiffSession({
       onPublish(newItems) {
         prepareForViewer(newItems);
         setItems((current) => [...current, ...newItems]);
+        // Push to the live viewer; initialItems only seeds first mount.
+        viewerRef.current?.addItems(newItems);
         setTreeSource(snapshotTreeSource(accumulator));
         setStats({ ...accumulator.stats });
       },

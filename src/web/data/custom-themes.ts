@@ -2,10 +2,11 @@ import { registerCustomTheme } from "@pierre/diffs";
 import pierreDarkSoft from "@pierre/theme/pierre-dark-soft";
 import pierreLightSoft from "@pierre/theme/pierre-light-soft";
 
+// theme.name must equal the registration key (pierre validates in resolveTheme).
 registerCustomTheme("diffhub-dark", () =>
   Promise.resolve({
     ...pierreDarkSoft,
-    name: "Diffhub Dark",
+    name: "diffhub-dark",
     colors: {
       ...pierreDarkSoft.colors,
       "editor.background": "#0f1011",
@@ -21,7 +22,7 @@ registerCustomTheme("diffhub-dark", () =>
 registerCustomTheme("diffhub-light", () =>
   Promise.resolve({
     ...pierreLightSoft,
-    name: "Diffhub Light",
+    name: "diffhub-light",
     colors: {
       ...pierreLightSoft.colors,
       "editor.background": "#fdfdfc",

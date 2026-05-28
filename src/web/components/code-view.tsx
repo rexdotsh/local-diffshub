@@ -2,6 +2,7 @@ import {
   type CodeViewItem,
   type CodeViewLineSelection,
   type CodeViewOptions,
+  getFiletypeFromFileName,
   type SelectedLineRange,
   setLanguageOverride,
   type SupportedLanguages,
@@ -27,13 +28,10 @@ type CodeViewWrapperProps = {
   diffIndicators: DiffIndicators;
   diffStyle: DiffStyle;
   hunkSeparators: HunkSeparatorStyle;
-  items: readonly CodeViewItem[];
-  languageOverrides: ReadonlyMap<string, SupportedLanguages>;
+  initialItems: readonly CodeViewItem[];
   lightTheme: string;
   lineNumbers: boolean;
-  onClearLanguageOverride(itemId: string): void;
   onSelectedLinesChange(selection: CodeViewLineSelection | null): void;
-  onSetLanguageOverride(itemId: string, language: SupportedLanguages): void;
   overflow: OverflowMode;
   selectedLines: CodeViewLineSelection | null;
   showBackgrounds: boolean;
@@ -47,13 +45,10 @@ export function CodeViewWrapper({
   diffIndicators,
   diffStyle,
   hunkSeparators,
-  items,
-  languageOverrides,
+  initialItems,
   lightTheme,
   lineNumbers,
-  onClearLanguageOverride,
   onSelectedLinesChange,
-  onSetLanguageOverride,
   overflow,
   selectedLines,
   showBackgrounds,
@@ -97,37 +92,35 @@ export function CodeViewWrapper({
     [handleToggleItemCollapsed]
   );
 
+  const applyLanguage = useCallback(
+    (itemId: string, lang: SupportedLanguages) => {
+      const viewer = viewerRef.current;
+      const item = viewer?.getItem(itemId);
+      if (viewer == null || item == null || item.type !== "diff") return;
+      item.fileDiff = setLanguageOverride(item.fileDiff, lang);
+      item.version = (typeof item.version === "number" ? item.version : 0) + 1;
+      viewer.updateItem(item);
+    },
+    [viewerRef]
+  );
+
   const renderHeaderMetadata = useCallback(
     (item: CodeViewItem<undefined>) => {
       if (item.type !== "diff") return null;
-      const inferred =
-        languageOverrides.get(item.id) ?? item.fileDiff.lang ?? null;
       return (
         <LanguageMenu
           fileName={item.fileDiff.name}
-          language={inferred}
-          onClear={() => onClearLanguageOverride(item.id)}
-          onSelect={(lang) => onSetLanguageOverride(item.id, lang)}
+          language={item.fileDiff.lang ?? null}
+          onClear={() => {
+            const inferred = getFiletypeFromFileName(item.fileDiff.name);
+            if (inferred != null) applyLanguage(item.id, inferred);
+          }}
+          onSelect={(lang) => applyLanguage(item.id, lang)}
         />
       );
     },
-    [languageOverrides, onClearLanguageOverride, onSetLanguageOverride]
+    [applyLanguage]
   );
-
-  // Apply per-item language overrides; preserve identity for unchanged items
-  // so CodeView's append-only fast path still kicks in.
-  const effectiveItems = useMemo<readonly CodeViewItem[]>(() => {
-    if (languageOverrides.size === 0) return items;
-    return items.map((item) => {
-      if (item.type !== "diff") return item;
-      const override = languageOverrides.get(item.id);
-      if (override == null || item.fileDiff.lang === override) return item;
-      return {
-        ...item,
-        fileDiff: setLanguageOverride(item.fileDiff, override),
-      };
-    });
-  }, [items, languageOverrides]);
 
   const onGutterUtilityClick = useCallback(
     (range: SelectedLineRange, context: { item: CodeViewItem<undefined> }) => {
@@ -178,7 +171,7 @@ export function CodeViewWrapper({
   return (
     <CodeView<undefined>
       className="cv-scrollbar relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-clip overscroll-contain [contain:strict] [overflow-anchor:none] [will-change:scroll-position]"
-      items={effectiveItems}
+      initialItems={initialItems}
       key={viewerKey}
       onSelectedLinesChange={onSelectedLinesChange}
       options={options}

@@ -1,4 +1,4 @@
-import type { CodeViewLineSelection, SupportedLanguages } from "@pierre/diffs";
+import type { CodeViewLineSelection } from "@pierre/diffs";
 import { useWorkerPool } from "@pierre/diffs/react";
 import {
   useCallback,
@@ -283,27 +283,6 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
     [session.viewerKey]
   );
 
-  const [languageOverrides, setLanguageOverrides] = useState<
-    ReadonlyMap<string, SupportedLanguages>
-  >(() => new Map());
-  const handleSetLanguageOverride = useCallback(
-    (itemId: string, language: SupportedLanguages) => {
-      setLanguageOverrides((current) => {
-        const next = new Map(current);
-        next.set(itemId, language);
-        return next;
-      });
-    },
-    []
-  );
-  const handleClearLanguageOverride = useCallback((itemId: string) => {
-    setLanguageOverrides((current) => {
-      const next = new Map(current);
-      next.delete(itemId);
-      return next;
-    });
-  }, []);
-
   const persist = useCallback((next: UpdatePreferencesRequest) => {
     updatePreferences(next).catch(() => undefined);
   }, []);
@@ -505,13 +484,10 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
               diffIndicators={diffIndicators}
               diffStyle={diffStyle}
               hunkSeparators={hunkSeparators}
-              items={session.items}
-              languageOverrides={languageOverrides}
+              initialItems={session.items}
               lightTheme={lightTheme}
               lineNumbers={lineNumbers}
-              onClearLanguageOverride={handleClearLanguageOverride}
               onSelectedLinesChange={handleSelectedLinesChange}
-              onSetLanguageOverride={handleSetLanguageOverride}
               overflow={overflow}
               selectedLines={selectedLines}
               showBackgrounds={showBackgrounds}

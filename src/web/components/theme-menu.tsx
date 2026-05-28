@@ -5,18 +5,13 @@ import {
   IconColorDark,
   IconColorLight,
 } from "@pierre/icons";
-import {
-  type CSSProperties,
-  type ReactNode,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -69,17 +64,10 @@ export function ThemeMenu({
       >
         <TriggerIcon aria-hidden className="size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="w-72 p-2"
-        style={contentStyle}
-      >
+      <DropdownMenuContent align="end" className="w-60" style={contentStyle}>
         {view === "main" ? (
           <>
-            <DropdownMenuItem
-              className="cursor-default p-1 focus:bg-transparent"
-              closeOnClick={false}
-            >
+            <div className="p-0.5">
               <ToggleGroup<ColorMode>
                 className="w-full"
                 onValueChange={onChangeColorMode}
@@ -89,7 +77,7 @@ export function ThemeMenu({
                   const Icon = COLOR_MODE_ICON[mode];
                   return (
                     <ToggleGroupItem
-                      className="flex-1 justify-center capitalize"
+                      className="flex-1 justify-center gap-1.5 capitalize"
                       key={mode}
                       value={mode}
                     >
@@ -99,14 +87,15 @@ export function ThemeMenu({
                   );
                 })}
               </ToggleGroup>
-            </DropdownMenuItem>
+            </div>
+            <DropdownMenuSeparator />
             <ThemeRow
-              icon={<IconColorLight aria-hidden className="size-3" />}
+              hint="Light"
               label={lightTheme}
               onSelect={() => setView("light")}
             />
             <ThemeRow
-              icon={<IconColorDark aria-hidden className="size-3" />}
+              hint="Dark"
               label={darkTheme}
               onSelect={() => setView("dark")}
             />
@@ -134,25 +123,27 @@ export function ThemeMenu({
 }
 
 function ThemeRow({
-  icon,
+  hint,
   label,
   onSelect,
 }: {
-  icon: ReactNode;
+  hint: string;
   label: string;
   onSelect(): void;
 }) {
   return (
     <DropdownMenuItem
-      className="cursor-pointer items-center gap-2"
+      className="cursor-pointer items-center gap-2 py-1.5 pr-1.5"
       closeOnClick={false}
       onClick={onSelect}
     >
-      {icon}
+      <span className="w-9 shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground/70">
+        {hint}
+      </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <IconChevronSm
         aria-hidden
-        className="size-3 -rotate-90 text-muted-foreground"
+        className="size-3 -rotate-90 text-muted-foreground/70"
       />
     </DropdownMenuItem>
   );
@@ -203,15 +194,19 @@ function ThemeList({
           {isLight ? "Light theme" : "Dark theme"}
         </span>
       </DropdownMenuItem>
+      <div className="-mx-1 my-1 h-px bg-border/50" />
       <div
-        className="mt-1 max-h-[320px] overflow-y-auto overscroll-contain"
+        className="cv-scrollbar max-h-72 overflow-y-auto overscroll-contain"
         ref={scrollContainerRef}
       >
         {themes.map((theme) => {
           const selected = current === theme;
           return (
             <DropdownMenuItem
-              className={cn("justify-between gap-2", selected && "bg-muted/40")}
+              className={cn(
+                "justify-between gap-2 pr-1.5",
+                selected && "bg-accent/60"
+              )}
               key={theme}
               onClick={() => onPick(theme)}
               ref={selected ? selectedItemRef : undefined}
