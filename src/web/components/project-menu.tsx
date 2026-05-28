@@ -1,5 +1,5 @@
 import { IconBranch, IconChevronSm, IconFolderOpen } from "@pierre/icons";
-import { type FormEvent, type KeyboardEvent, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,11 @@ export function ProjectMenu({
   const [path, setPath] = useState("");
   const projectLabel =
     project == null ? "Open project" : projectDisplayName(project);
+  const visibleRecents = useMemo(
+    () =>
+      recentProjects.filter((entry) => entry.isWorktree !== true).slice(0, 8),
+    [recentProjects]
+  );
 
   const submit = () => {
     const trimmed = path.trim();
@@ -104,23 +109,24 @@ export function ProjectMenu({
             Open
           </Button>
         </form>
-        {recentProjects.length > 0 ? (
+        {visibleRecents.length > 0 ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="px-2 py-1 text-[10px] uppercase tracking-wider">
               Recent
             </DropdownMenuLabel>
-            {recentProjects.slice(0, 8).map((recent) => (
+            {visibleRecents.map((recent) => (
               <DropdownMenuItem
-                className="flex-col items-start gap-0"
                 key={recent.path}
                 onClick={() => handleSelectProject(recent.path)}
               >
-                <span className="truncate text-xs font-medium">
-                  {recent.name}
-                </span>
-                <span className="truncate text-[10px] text-muted-foreground">
-                  {recent.path}
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <span className="truncate text-xs font-medium">
+                    {recent.name}
+                  </span>
+                  <span className="truncate text-[10px] text-muted-foreground">
+                    {recent.path}
+                  </span>
                 </span>
               </DropdownMenuItem>
             ))}

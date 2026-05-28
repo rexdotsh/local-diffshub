@@ -153,7 +153,6 @@
 
 .cv-mini-scrollbar {
   --cv-mini-scrollbar-thumb-bg: transparent;
-  scrollbar-gutter: stable;
 }
 .cv-mini-scrollbar::-webkit-scrollbar {
   width: 10px;

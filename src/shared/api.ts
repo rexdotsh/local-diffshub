@@ -42,6 +42,7 @@ const diffModeSchema = z.enum([
 const recentProjectSchema = z.object({
   path: projectPathSchema,
   name: projectNameSchema,
+  isWorktree: z.boolean().optional(),
   lastOpenedAt: z.string().datetime(),
 });
 
@@ -67,6 +68,7 @@ export const appStateSchema = z.object({
 export const upsertRecentProjectRequestSchema = z.strictObject({
   path: projectPathSchema,
   name: projectNameSchema.optional(),
+  isWorktree: z.boolean().optional(),
 });
 
 export const updatePreferencesRequestSchema = z.strictObject({

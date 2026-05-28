@@ -38,6 +38,7 @@ export function createProjectRoutes(store: StateStore): Hono {
     await store.upsertRecentProject({
       path: project.repoRoot,
       name: basename(project.repoRoot),
+      isWorktree: project.isWorktree,
     });
     return context.json(project);
   });

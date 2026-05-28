@@ -26,6 +26,7 @@ export function createStateRoutes(store: StateStore): Hono {
       await store.upsertRecentProject({
         path: projectPath,
         name: body.name ?? projectPath.split(/[\\/]/).at(-1) ?? projectPath,
+        isWorktree: body.isWorktree,
       })
     );
   });

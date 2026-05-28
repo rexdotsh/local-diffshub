@@ -15,7 +15,7 @@ const MAX_RECENT_PROJECTS = 20;
 export type StateStore = {
   getState(): Promise<AppState>;
   upsertRecentProject(
-    project: Pick<RecentProject, "name" | "path">
+    project: Pick<RecentProject, "name" | "path" | "isWorktree">
   ): Promise<AppState>;
   updatePreferences(preferences: UpdatePreferencesRequest): Promise<AppState>;
 };
