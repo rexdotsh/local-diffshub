@@ -99,7 +99,7 @@ export const Header = memo(function Header({
   return (
     <header
       className={cn(
-        "z-10 flex h-11 items-center gap-2 border-b border-[var(--color-border-opaque,var(--border))] px-3",
+        "z-10 flex h-11 items-center gap-2 border-b border-[var(--color-border-opaque,var(--border))] px-2",
         chromeStyle == null && "bg-[var(--app-header-bg)]"
       )}
       style={chromeStyle}

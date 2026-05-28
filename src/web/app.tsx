@@ -472,7 +472,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
           {errorBanner}
         </div>
       )}
-      <div className="grid min-h-0 grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid min-h-0 grid-cols-[288px_minmax(0,1fr)]">
         <Sidebar
           chromeStyle={chromeStyle}
           darkTheme={darkTheme}

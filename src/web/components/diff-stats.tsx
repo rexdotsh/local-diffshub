@@ -9,7 +9,7 @@ type DiffStatsBarProps = {
 
 export function DiffStatsBar({ stats, streaming }: DiffStatsBarProps) {
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-[var(--color-border-opaque,var(--border))] px-3 py-2 text-xs">
+    <div className="flex items-center justify-between gap-2 border-t border-[var(--color-border-opaque,var(--border))] px-2 py-2 text-xs">
       <div className="flex min-w-0 items-center gap-3 text-muted-foreground tabular-nums">
         <Stat
           icon={<IconFile aria-hidden className="size-3" />}

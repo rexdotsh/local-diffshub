@@ -55,7 +55,7 @@ export function Sidebar({
       )}
       style={chromeStyle}
     >
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 px-2 py-2">
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
           Files
         </span>
