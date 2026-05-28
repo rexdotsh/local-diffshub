@@ -15,6 +15,7 @@ import {
   type ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -148,17 +149,6 @@ export function ProjectMenu({
               Open
             </Button>
           </form>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-2" onClick={handleOpenBrowser}>
-            <IconFolderPlus
-              aria-hidden
-              className="size-3 text-muted-foreground"
-            />
-            <span className="text-xs">Add project…</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">
-              Browse
-            </span>
-          </DropdownMenuItem>
           {visibleRecents.length > 0 ? (
             <>
               <DropdownMenuSeparator />
@@ -167,9 +157,14 @@ export function ProjectMenu({
               </DropdownMenuLabel>
               {visibleRecents.map((recent) => (
                 <DropdownMenuItem
+                  className="gap-2"
                   key={recent.path}
                   onClick={() => handleSelectProject(recent.path)}
                 >
+                  <IconCodeFolder
+                    aria-hidden
+                    className="size-3 text-muted-foreground"
+                  />
                   <span className="flex min-w-0 flex-col leading-tight">
                     <span className="truncate text-xs font-medium">
                       {recent.name}
@@ -210,6 +205,17 @@ export function ProjectMenu({
               ))}
             </>
           ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="gap-2" onClick={handleOpenBrowser}>
+            <IconFolderPlus
+              aria-hidden
+              className="size-3 text-muted-foreground"
+            />
+            <span className="text-xs">Add project…</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              Browse
+            </span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <Dialog onOpenChange={setDialogOpen} open={dialogOpen}>
@@ -224,6 +230,10 @@ export function ProjectMenu({
   );
 }
 
+type NavigableItem =
+  | { type: "parent"; path: string }
+  | { type: "entry"; entry: DirectoryEntry };
+
 function ProjectBrowser({
   onOpen,
   onOpened,
@@ -234,7 +244,9 @@ function ProjectBrowser({
   const [query, setQuery] = useState("");
   const [openError, setOpenError] = useState<string | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const listing = useDirectoryListing();
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   const trimmed = query.trim();
   const pathMode = isPathLike(trimmed);
@@ -246,11 +258,45 @@ function ProjectBrowser({
     return entries.filter((entry) => entry.name.toLowerCase().includes(lower));
   }, [entries, pathMode, trimmed]);
 
+  const items = useMemo<NavigableItem[]>(() => {
+    const result: NavigableItem[] = [];
+    const parent = listing.listing?.parent;
+    if (trimmed === "" && parent != null) {
+      result.push({ path: parent, type: "parent" });
+    }
+    for (const entry of filtered) {
+      result.push({ entry, type: "entry" });
+    }
+    return result;
+  }, [filtered, listing.listing?.parent, trimmed]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: clear filter when directory changes.
   useEffect(() => {
     setQuery("");
     setOpenError(null);
   }, [listing.listing?.path]);
+
+  // Reset highlight on query/path change. Filter mode with non-empty query
+  // snaps to 0 ("auto-hover the first match"); empty query / path mode
+  // shows no preselection until the user presses an arrow.
+  useEffect(() => {
+    setActiveIndex(trimmed !== "" && !pathMode ? 0 : -1);
+  }, [pathMode, trimmed]);
+
+  const effectiveActiveIndex =
+    pathMode || activeIndex < 0 || items.length === 0
+      ? -1
+      : Math.min(activeIndex, items.length - 1);
+
+  useEffect(() => {
+    if (effectiveActiveIndex < 0) return;
+    const container = listContainerRef.current;
+    if (container == null) return;
+    const target = container.querySelector<HTMLElement>(
+      '[aria-current="true"]'
+    );
+    target?.scrollIntoView({ block: "nearest" });
+  }, [effectiveActiveIndex]);
 
   const tryOpen = async (target: string) => {
     setIsOpening(true);
@@ -267,31 +313,50 @@ function ProjectBrowser({
     }
   };
 
+  const activateItem = (item: NavigableItem) => {
+    if (item.type === "parent") {
+      listing.navigate(item.path);
+      return;
+    }
+    if (item.entry.kind === "git-repo") {
+      tryOpen(item.entry.path);
+      return;
+    }
+    listing.navigate(item.entry.path);
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (trimmed === "" || isOpening) return;
+    if (isOpening) return;
     if (pathMode) {
+      if (trimmed === "") return;
       tryOpen(trimmed);
       return;
     }
-    const target = filtered[0];
-    if (target == null) return;
-    if (target.kind === "git-repo") {
-      tryOpen(target.path);
+    if (effectiveActiveIndex >= 0) {
+      const item = items[effectiveActiveIndex];
+      if (item != null) activateItem(item);
       return;
     }
-    listing.navigate(target.path);
+    const fallback = items[0];
+    if (fallback != null) activateItem(fallback);
   };
 
-  const handleEntryActivate = (
-    entryPath: string,
-    kind: "directory" | "git-repo"
-  ) => {
-    if (kind === "git-repo") {
-      tryOpen(entryPath);
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (pathMode) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (items.length === 0) return;
+      setActiveIndex((index) => (index < 0 ? 0 : (index + 1) % items.length));
       return;
     }
-    listing.navigate(entryPath);
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (items.length === 0) return;
+      setActiveIndex((index) =>
+        index < 0 ? items.length - 1 : (index - 1 + items.length) % items.length
+      );
+    }
   };
 
   return (
@@ -329,6 +394,7 @@ function ProjectBrowser({
               setQuery(event.target.value);
               if (openError != null) setOpenError(null);
             }}
+            onKeyDown={handleInputKeyDown}
             placeholder="Filter folders or type /path…"
             value={query}
           />
@@ -353,16 +419,19 @@ function ProjectBrowser({
           </button>
         </div>
       ) : null}
-      <div className="cv-mini-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-border/60 px-2 py-1">
+      <div
+        className="cv-mini-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-border/60 px-2 py-1"
+        ref={listContainerRef}
+      >
         <EntryList
-          activeIndex={
-            !pathMode && trimmed !== "" && filtered.length > 0 ? 0 : -1
-          }
-          entries={filtered}
+          activeIndex={effectiveActiveIndex}
           error={listing.error}
+          items={items}
           loadState={listing.loadState}
-          onEntryActivate={handleEntryActivate}
-          parent={trimmed === "" ? (listing.listing?.parent ?? null) : null}
+          onActivate={(index) => {
+            const item = items[index];
+            if (item != null) activateItem(item);
+          }}
           pathMode={pathMode}
           query={trimmed}
         />
@@ -373,64 +442,80 @@ function ProjectBrowser({
 
 function EntryList({
   activeIndex,
-  entries,
   error,
+  items,
   loadState,
-  onEntryActivate,
-  parent,
+  onActivate,
   pathMode,
   query,
 }: {
   activeIndex: number;
-  entries: readonly DirectoryEntry[];
   error: string | null;
+  items: readonly NavigableItem[];
   loadState: "idle" | "loading" | "ready" | "error";
-  onEntryActivate(path: string, kind: "directory" | "git-repo"): void;
-  parent: string | null;
+  onActivate(index: number): void;
   pathMode: boolean;
   query: string;
 }) {
+  const entryCount = items.reduce(
+    (count, item) => (item.type === "entry" ? count + 1 : count),
+    0
+  );
   return (
     <ul>
-      {parent != null ? (
-        <EntryRow
-          icon={<IconArrowLeftBar aria-hidden className="size-3" />}
-          name=".."
-          onClick={() => onEntryActivate(parent, "directory")}
-          trailing={
-            <span className="text-[10px] text-muted-foreground">parent</span>
-          }
-        />
-      ) : null}
-      {entries.map((entry, index) => (
-        <EntryRow
-          active={index === activeIndex}
-          icon={
-            entry.kind === "git-repo" ? (
-              <IconCodeFolder aria-hidden className="size-3 text-emerald-400" />
-            ) : (
-              <IconFolder
-                aria-hidden
-                className="size-3 text-muted-foreground"
-              />
-            )
-          }
-          key={entry.path}
-          name={entry.name}
-          onClick={() => onEntryActivate(entry.path, entry.kind)}
-          trailing={
-            entry.kind === "git-repo" ? (
-              <span className="text-[10px] text-emerald-400">git</span>
-            ) : null
-          }
-        />
-      ))}
+      {items.map((item, index) => {
+        const active = index === activeIndex;
+        const onClick = () => onActivate(index);
+        if (item.type === "parent") {
+          return (
+            <EntryRow
+              active={active}
+              icon={<IconArrowLeftBar aria-hidden className="size-3" />}
+              key="__parent__"
+              name=".."
+              onClick={onClick}
+              trailing={
+                <span className="text-[10px] text-muted-foreground">
+                  parent
+                </span>
+              }
+            />
+          );
+        }
+        const entry = item.entry;
+        return (
+          <EntryRow
+            active={active}
+            icon={
+              entry.kind === "git-repo" ? (
+                <IconCodeFolder
+                  aria-hidden
+                  className="size-3 text-emerald-400"
+                />
+              ) : (
+                <IconFolder
+                  aria-hidden
+                  className="size-3 text-muted-foreground"
+                />
+              )
+            }
+            key={entry.path}
+            name={entry.name}
+            onClick={onClick}
+            trailing={
+              entry.kind === "git-repo" ? (
+                <span className="text-[10px] text-emerald-400">git</span>
+              ) : null
+            }
+          />
+        );
+      })}
       {loadState === "error" ? (
         <li className="px-2 py-2 text-[11px] text-destructive">
           {error ?? "Unable to read directory."}
         </li>
       ) : null}
-      {loadState === "ready" && entries.length === 0 ? (
+      {loadState === "ready" && entryCount === 0 ? (
         <li className="px-2 py-3 text-[11px] text-muted-foreground">
           {pathMode
             ? "Press Enter to try opening this path."
