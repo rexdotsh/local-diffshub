@@ -116,7 +116,7 @@ export function Sidebar({
             />
           )}
         </div>
-        <DiffStatsBar stats={stats} streaming={loadState === "streaming"} />
+        <DiffStatsBar stats={stats} />
       </aside>
     </>
   );

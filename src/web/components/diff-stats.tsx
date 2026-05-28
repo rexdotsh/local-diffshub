@@ -4,10 +4,9 @@ import type { DiffStats } from "../data/accumulator";
 
 type DiffStatsBarProps = {
   stats: DiffStats | null;
-  streaming: boolean;
 };
 
-export function DiffStatsBar({ stats, streaming }: DiffStatsBarProps) {
+export function DiffStatsBar({ stats }: DiffStatsBarProps) {
   return (
     <div className="flex items-center justify-between gap-2 border-t border-[var(--color-border-opaque,var(--border))] px-2 py-2 text-xs">
       <div className="flex min-w-0 items-center gap-3 text-muted-foreground tabular-nums">
@@ -29,11 +28,6 @@ export function DiffStatsBar({ stats, streaming }: DiffStatsBarProps) {
           value={stats?.deletedLines ?? 0}
         />
       </div>
-      {streaming ? (
-        <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-300">
-          live
-        </span>
-      ) : null}
     </div>
   );
 }
