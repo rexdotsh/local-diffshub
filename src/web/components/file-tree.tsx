@@ -42,6 +42,26 @@ const TREE_UNSAFE_CSS = `
   padding-block: 6px;
   padding-inline-end: 6px;
 }
+[data-item-section='content'] [data-truncate-container] {
+  height: auto;
+  overflow: hidden;
+}
+[data-item-section='content'] [data-truncate-grid] {
+  display: block;
+  min-width: 0;
+}
+[data-item-section='content'] [data-truncate-marker-cell],
+[data-item-section='content'] [data-truncate-content='overflow'] {
+  display: none;
+}
+[data-item-section='content'] [data-truncate-content='visible'] {
+  direction: ltr;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 [data-item-contains-git-change='true'] > [data-item-section='git'] { display: none; }
 [data-item-type='folder'] {
   color: color-mix(in lab, light-dark(#000, #fff) 25%, var(--trees-fg));
@@ -56,7 +76,7 @@ const BASE_FILE_TREE_OPTIONS = {
   itemHeight: TREE_ITEM_HEIGHT,
   search: true,
   sort: PRESERVE_INPUT_ORDER_SORT,
-  stickyFolders: true,
+  stickyFolders: false,
   unsafeCSS: TREE_UNSAFE_CSS,
 } as const satisfies Partial<FileTreeOptions>;
 
