@@ -33,6 +33,7 @@ export type DiffSession = {
   applyCollapseModeToLoaded(mode: CollapseMode): void;
   error: string | null;
   items: readonly CodeViewItem[];
+  loadStartedAt: number | null;
   loadState: LoadState;
   reload(): void;
   stats: DiffStats | null;
@@ -63,6 +64,7 @@ export function useDiffSession({
   const [items, setItems] = useState<readonly CodeViewItem[]>(EMPTY_ITEMS);
   const [treeSource, setTreeSource] = useState<TreeSource | null>(null);
   const [stats, setStats] = useState<DiffStats | null>(null);
+  const [loadStartedAt, setLoadStartedAt] = useState<number | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [viewerKey, setViewerKey] = useState(0);
@@ -128,6 +130,7 @@ export function useDiffSession({
       setTreeSource(null);
       setStats(null);
       setError(null);
+      setLoadStartedAt(null);
       setLoadState(state);
     };
 
@@ -150,6 +153,7 @@ export function useDiffSession({
     setTreeSource(null);
     setStats(null);
     setError(null);
+    setLoadStartedAt(Date.now());
     setLoadState("streaming");
     setViewerKey((key) => key + 1);
     loadedItemIdsRef.current = new Set();
@@ -187,6 +191,7 @@ export function useDiffSession({
     applyCollapseModeToLoaded,
     error,
     items,
+    loadStartedAt,
     loadState,
     reload,
     stats,

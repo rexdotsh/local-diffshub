@@ -259,6 +259,12 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
     mode,
     path: project.project?.repoRoot ?? "",
   });
+  const diffStaleAt =
+    project.staleAt != null &&
+    session.loadStartedAt != null &&
+    project.staleAt > session.loadStartedAt
+      ? project.staleAt
+      : null;
 
   const [selectedLines, setSelectedLines] =
     useState<CodeViewLineSelection | null>(null);
@@ -427,8 +433,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
 
   const handleRefresh = useCallback(() => {
     session.reload();
-    project.markFresh();
-  }, [project.markFresh, session.reload]);
+  }, [session.reload]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -548,7 +553,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         recentProjects={project.recentProjects}
         scope={scope}
         showBackgrounds={showBackgrounds}
-        staleAt={project.staleAt}
+        staleAt={diffStaleAt}
         view={view}
         worktrees={project.worktrees}
       />

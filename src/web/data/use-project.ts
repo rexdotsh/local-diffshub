@@ -22,7 +22,6 @@ export type ProjectState = {
   branches: BranchSummary[];
   error: string | null;
   loadState: ProjectLoadState;
-  markFresh(): void;
   open(path: string): Promise<void>;
   project: ProjectSummary | null;
   recentProjects: RecentProject[];
@@ -164,15 +163,10 @@ export function useProject({
     };
   }, [quietRefresh, repoRoot]);
 
-  const markFresh = useCallback(() => {
-    setStaleAt(null);
-  }, []);
-
   return {
     branches,
     error,
     loadState,
-    markFresh,
     open,
     project,
     recentProjects,
