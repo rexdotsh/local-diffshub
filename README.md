@@ -1,46 +1,77 @@
-# Local Diffhub
+# Local Diffshub
 
-Read-only local Git review service built with Bun, Hono, Vite React, shadcn/ui, and Pierre diff primitives.
+Local Diffshub is a read-only Git review app for inspecting local repositories in the browser. The browser tab title is `diffs`.
 
-See `PLAN.md` for the implementation phases and architectural decisions.
+It combines a Bun/Hono API with a Vite React frontend and Pierre diff/file-tree components.
 
-## Run
+## Features
+
+- Open local Git repositories and worktrees.
+- Review branch, commit, staged, unstaged, and combined diffs.
+- Browse changed files with a keyboard-friendly file tree.
+- Persist recent projects and UI preferences locally.
+- Refresh automatically when watched project files change.
+- Run read-only Git commands only.
+
+## Development
+
+Install dependencies:
 
 ```sh
 bun install
+```
+
+Run the API and web app in separate terminals:
+
+```sh
 bun run dev:api
 bun run dev
 ```
 
 - Web: `http://127.0.0.1:5173`
-- API/server: `http://127.0.0.1:3003`
-- Run the server and web commands in separate terminals during development.
-- Set `VITE_API_ORIGIN` only if the Hono server uses a non-default origin.
+- API: `http://127.0.0.1:3003`
+- Optional API override: `VITE_API_ORIGIN=http://127.0.0.1:3003`
 
-## Build And Verify
+## Production
+
+Build both client and server bundles:
+
+```sh
+bun run build
+```
+
+Start the bundled server:
+
+```sh
+bun run start
+```
+
+## Verification
 
 ```sh
 bun run typecheck
 bun run lint
 bun test
-bun run build
 ```
 
-## Auth
+## Configuration
 
-Localhost can run without auth. For non-local access set both:
+Localhost can run without authentication. For non-local access, set both auth variables:
 
 ```sh
-LOCAL_DIFFHUB_USER=...
-LOCAL_DIFFHUB_PASSWORD=...
+LOCAL_DIFFSHUB_USER=...
+LOCAL_DIFFSHUB_PASSWORD=...
 ```
 
-The app only runs read-only Git commands. It never checks out branches, stages files, applies patches, or mutates worktrees.
+State is stored at `~/.local/share/local-diffshub/state.json` by default. Override it with:
 
-## Operations
+```sh
+LOCAL_DIFFSHUB_STATE_PATH=/path/to/state.json
+```
+
+## Safety Limits
 
 - Diff streams are capped at 50 MiB and 60 seconds per request.
 - JSON API bodies are capped at 64 KiB.
-- Git command helper output is capped to avoid unbounded memory use.
-- The diff viewer is lazy-loaded; large Shiki language chunks in production builds are expected.
-- SSE file watching ignores `.git`, `node_modules`, and `dist`; very large repos may still hit OS watcher limits.
+- Git command output is capped to avoid unbounded memory use.
+- File watching ignores `.git`, `node_modules`, and `dist`.
