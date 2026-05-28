@@ -15,9 +15,7 @@ describe("appStateSchema", () => {
         lightTheme: "diffhub-light",
         lineNumbers: true,
         overflow: "scroll",
-        selectedMode: "combined",
         showBackgrounds: true,
-        sidebarCollapsed: false,
       },
       recentProjects: [],
     });
@@ -28,7 +26,7 @@ describe("updatePreferencesRequestSchema", () => {
   test("keeps preference updates partial", () => {
     expect(updatePreferencesRequestSchema.parse({})).toEqual({});
     expect(
-      updatePreferencesRequestSchema.parse({ selectedMode: "staged" })
-    ).toEqual({ selectedMode: "staged" });
+      updatePreferencesRequestSchema.parse({ collapseMode: "collapsed" })
+    ).toEqual({ collapseMode: "collapsed" });
   });
 });

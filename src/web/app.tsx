@@ -1,5 +1,5 @@
 import type { CodeViewLineSelection } from "@pierre/diffs";
-import { useWorkerPool } from "@pierre/diffs/react";
+import { type CodeViewHandle, useWorkerPool } from "@pierre/diffs/react";
 import {
   useCallback,
   useEffect,
@@ -32,6 +32,7 @@ import {
   useResolvedColorMode,
   useThemeChromeStyle,
 } from "./data/use-theme-chrome";
+import { useViewUrlState } from "./data/use-view-url-state";
 import {
   type ColorMode,
   COLOR_MODES,
@@ -59,7 +60,6 @@ type AppBootstrap = {
   initialPath: string | undefined;
   lightTheme: LightTheme;
   lineNumbers: boolean;
-  mode: DiffMode;
   overflow: OverflowMode;
   recentProjects: readonly RecentProject[];
   showBackgrounds: boolean;
@@ -75,7 +75,6 @@ const DEFAULT_BOOTSTRAP: AppBootstrap = {
   initialPath: undefined,
   lightTheme: DEFAULT_LIGHT_THEME,
   lineNumbers: true,
-  mode: "combined",
   overflow: "scroll",
   recentProjects: [],
   showBackgrounds: true,
@@ -110,7 +109,6 @@ export function App() {
           initialPath: p.lastProjectPath,
           lightTheme,
           lineNumbers: p.lineNumbers,
-          mode: p.selectedMode,
           overflow: p.overflow,
           recentProjects: state.recentProjects,
           showBackgrounds: p.showBackgrounds,
@@ -138,12 +136,13 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
     initialRecentProjects: bootstrap.recentProjects,
   });
 
-  const [mode, setMode] = useState<DiffMode>(bootstrap.mode);
-  const [lastChangesScope, setLastChangesScope] = useState<ChangesScope>(() =>
-    isChangesScope(bootstrap.mode) ? bootstrap.mode : "combined"
-  );
-  const [selectedBranch, setSelectedBranch] = useState<string | undefined>();
-  const [selectedCommit, setSelectedCommit] = useState<string | undefined>();
+  const [viewUrlState, setViewUrlState] = useViewUrlState();
+  const mode: DiffMode =
+    viewUrlState.mode === "changes" ? viewUrlState.scope : viewUrlState.mode;
+  const lastChangesScope: ChangesScope = viewUrlState.scope;
+  const selectedBranch = viewUrlState.branch;
+  const selectedCommit = viewUrlState.commit;
+  const selectedFile = viewUrlState.file;
   const [diffStyle, setDiffStyle] = useState<DiffStyle>(bootstrap.diffStyle);
   const [overflow, setOverflow] = useState<OverflowMode>(bootstrap.overflow);
   const [showBackgrounds, setShowBackgrounds] = useState(
@@ -196,30 +195,47 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
       .catch(() => undefined);
   }, [darkTheme, lightTheme, workerPool, lightHydrated, darkHydrated]);
 
-  const repoRoot = project.project?.repoRoot;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on repo swap.
-  useEffect(() => {
-    setSelectedBranch(undefined);
-    setSelectedCommit(undefined);
-    setMobileSidebarOpen(false);
-  }, [repoRoot]);
-
   useEffect(() => {
     if (project.project == null) return;
     const summary = project.project;
-    setSelectedBranch((current) => {
-      if (current != null && project.branches.some((b) => b.name === current)) {
-        return current;
+    if (viewUrlState.mode === "branch") {
+      if (
+        selectedBranch != null &&
+        project.branches.some((branch) => branch.name === selectedBranch)
+      ) {
+        return;
       }
-      return summary.currentBranch ?? summary.defaultBranch.ref;
-    });
-    setSelectedCommit((current) => {
-      if (current != null && project.commits.some((c) => c.hash === current)) {
-        return current;
+      const fallbackBranch = summary.currentBranch ?? summary.defaultBranch.ref;
+      if (selectedBranch !== fallbackBranch) {
+        setViewUrlState({ branch: fallbackBranch }, "replace");
       }
-      return project.commits[0]?.hash;
-    });
-  }, [project.branches, project.commits, project.project]);
+      return;
+    }
+    if (viewUrlState.mode === "commit") {
+      const match = project.commits.find(
+        (commit) =>
+          commit.hash === selectedCommit || commit.shortHash === selectedCommit
+      );
+      if (match != null) {
+        if (match.hash !== selectedCommit) {
+          setViewUrlState({ commit: match.hash }, "replace");
+        }
+        return;
+      }
+      const fallbackCommit = project.commits[0]?.hash;
+      if (selectedCommit !== fallbackCommit) {
+        setViewUrlState({ commit: fallbackCommit }, "replace");
+      }
+    }
+  }, [
+    project.branches,
+    project.commits,
+    project.project,
+    selectedBranch,
+    selectedCommit,
+    setViewUrlState,
+    viewUrlState.mode,
+  ]);
 
   const session = useDiffSession({
     branch: selectedBranch,
@@ -295,11 +311,13 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
 
   const handleChangeMode = useCallback(
     (next: DiffMode) => {
-      setMode(next);
-      if (isChangesScope(next)) setLastChangesScope(next);
-      persist({ selectedMode: next });
+      if (isChangesScope(next)) {
+        setViewUrlState({ mode: "changes", scope: next }, "push");
+        return;
+      }
+      setViewUrlState({ mode: next }, "push");
     },
-    [persist]
+    [setViewUrlState]
   );
   const handleChangeDiffStyle = useCallback(
     (next: DiffStyle) => {
@@ -375,47 +393,62 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
 
   const handleSelectBranch = useCallback(
     (next: string) => {
-      setSelectedBranch(next);
-      handleChangeMode("branch");
+      setViewUrlState({ branch: next, mode: "branch" }, "push");
     },
-    [handleChangeMode]
+    [setViewUrlState]
   );
   const handleSelectCommit = useCallback(
     (next: string) => {
-      setSelectedCommit(next);
-      handleChangeMode("commit");
+      setViewUrlState({ commit: next, mode: "commit" }, "push");
     },
-    [handleChangeMode]
+    [setViewUrlState]
   );
 
   const handleOpenProject = useCallback(
     (path: string) => {
+      setMobileSidebarOpen(false);
       project.open(path).catch(() => undefined);
     },
     [project]
   );
 
+  const appliedFileKeyRef = useRef<string | null>(null);
   const handleSelectPath = useCallback(
-    (itemId: string) => {
+    (itemId: string, filePath: string) => {
       setMobileSidebarOpen(false);
+      setViewUrlState({ file: filePath }, "replace");
       const viewer = session.viewerRef.current;
       if (viewer == null) return;
-      const item = viewer.getItem(itemId);
-      if (item != null && item.type === "diff" && item.collapsed === true) {
-        item.collapsed = false;
-        item.version =
-          (typeof item.version === "number" ? item.version : 0) + 1;
-        viewer.updateItem(item);
-      }
-      viewer.scrollTo({
-        align: "start",
-        behavior: "smooth",
-        id: itemId,
-        type: "item",
-      });
+      revealDiffItem(viewer, itemId, "smooth");
+      appliedFileKeyRef.current = `${session.viewerKey}:${filePath}`;
     },
-    [session.viewerRef]
+    [session.viewerKey, session.viewerRef, setViewUrlState]
   );
+
+  useEffect(() => {
+    if (session.loadState !== "ready" && session.loadState !== "streaming") {
+      return;
+    }
+    if (selectedFile == null || session.treeSource == null) return;
+    const itemId = session.treeSource.pathToItemId.get(selectedFile);
+    if (itemId == null) {
+      setViewUrlState({ file: undefined }, "replace");
+      return;
+    }
+    const applyKey = `${session.viewerKey}:${selectedFile}`;
+    if (appliedFileKeyRef.current === applyKey) return;
+    const viewer = session.viewerRef.current;
+    if (viewer == null) return;
+    revealDiffItem(viewer, itemId, "instant");
+    appliedFileKeyRef.current = applyKey;
+  }, [
+    selectedFile,
+    session.loadState,
+    session.treeSource,
+    session.viewerKey,
+    session.viewerRef,
+    setViewUrlState,
+  ]);
 
   const errorBanner = project.error ?? session.error;
   const showViewer =
@@ -500,6 +533,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
           onMobileClose={() => setMobileSidebarOpen(false)}
           onSelectPath={handleSelectPath}
           resolvedColorMode={resolvedColorMode}
+          selectedPath={selectedFile}
           stats={session.stats}
           treeSource={session.treeSource}
         />
@@ -532,4 +566,23 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
       </div>
     </div>
   );
+}
+
+function revealDiffItem(
+  viewer: CodeViewHandle<undefined>,
+  itemId: string,
+  behavior: "instant" | "smooth"
+): void {
+  const item = viewer.getItem(itemId);
+  if (item != null && item.type === "diff" && item.collapsed === true) {
+    item.collapsed = false;
+    item.version = (typeof item.version === "number" ? item.version : 0) + 1;
+    viewer.updateItem(item);
+  }
+  viewer.scrollTo({
+    align: "start",
+    behavior,
+    id: itemId,
+    type: "item",
+  });
 }

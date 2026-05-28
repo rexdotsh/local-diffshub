@@ -26,8 +26,9 @@ type SidebarProps = {
   loadState: LoadState;
   mobileOverlayOpen: boolean;
   onMobileClose(): void;
-  onSelectPath(itemId: string): void;
+  onSelectPath(itemId: string, filePath: string): void;
   resolvedColorMode: "light" | "dark";
+  selectedPath: string | undefined;
   stats: DiffStats | null;
   treeSource: TreeSource | null;
 };
@@ -41,6 +42,7 @@ export function Sidebar({
   onMobileClose,
   onSelectPath,
   resolvedColorMode,
+  selectedPath,
   stats,
   treeSource,
 }: SidebarProps) {
@@ -109,6 +111,7 @@ export function Sidebar({
               onModelReady={onModelReady}
               onSelectPath={onSelectPath}
               resolvedColorMode={resolvedColorMode}
+              selectedPath={selectedPath}
               source={treeSource}
             />
           )}

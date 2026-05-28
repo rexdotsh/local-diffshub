@@ -56,9 +56,7 @@ export const appPreferencesSchema = z.object({
   lightTheme: z.string().min(1).default("diffhub-light"),
   lineNumbers: z.boolean().default(true),
   overflow: overflowSchema.default("scroll"),
-  selectedMode: diffModeSchema.default("combined"),
   showBackgrounds: z.boolean().default(true),
-  sidebarCollapsed: z.boolean().default(false),
 });
 
 export const appStateSchema = z.object({
@@ -82,9 +80,7 @@ export const updatePreferencesRequestSchema = z.strictObject({
   lightTheme: z.string().min(1).optional(),
   lineNumbers: z.boolean().optional(),
   overflow: overflowSchema.optional(),
-  selectedMode: diffModeSchema.optional(),
   showBackgrounds: z.boolean().optional(),
-  sidebarCollapsed: z.boolean().optional(),
 });
 
 export const openProjectRequestSchema = z.strictObject({

@@ -64,8 +64,9 @@ type DiffFileTreeProps = {
   darkTheme: DiffsThemeNames;
   lightTheme: DiffsThemeNames;
   onModelReady(model: FileTreeModel | null): void;
-  onSelectPath(itemId: string): void;
+  onSelectPath(itemId: string, filePath: string): void;
   resolvedColorMode: "light" | "dark";
+  selectedPath: string | undefined;
   source: TreeSource;
 };
 
@@ -75,6 +76,7 @@ export const DiffFileTree = memo(function DiffFileTree({
   onModelReady,
   onSelectPath,
   resolvedColorMode,
+  selectedPath,
   source,
 }: DiffFileTreeProps) {
   const sourceRef = useRef(source);
@@ -102,10 +104,10 @@ export const DiffFileTree = memo(function DiffFileTree({
         return;
       }
       const [first] = selectedPaths;
-      const itemId =
-        first == null ? undefined : sourceRef.current.pathToItemId.get(first);
+      if (first == null) return;
+      const itemId = sourceRef.current.pathToItemId.get(first);
       if (itemId != null) {
-        onSelectPathRef.current(itemId);
+        onSelectPathRef.current(itemId, first);
       }
     },
     []
@@ -131,6 +133,16 @@ export const DiffFileTree = memo(function DiffFileTree({
     onModelReady(model);
     return () => onModelReady(null);
   }, [model, onModelReady]);
+
+  useEffect(() => {
+    for (const path of model.getSelectedPaths()) {
+      if (path !== selectedPath) model.getItem(path)?.deselect();
+    }
+    if (selectedPath != null && source.pathToItemId.has(selectedPath)) {
+      model.getItem(selectedPath)?.select();
+      model.scrollToPath(selectedPath, { offset: "nearest" });
+    }
+  }, [model, selectedPath, source]);
 
   return (
     <FileTree

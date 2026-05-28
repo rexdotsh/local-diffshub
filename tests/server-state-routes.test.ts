@@ -34,7 +34,7 @@ describe("state routes", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      preferences: { selectedMode: "combined" },
+      preferences: { diffStyle: "split" },
       recentProjects: [],
     });
   });
@@ -63,7 +63,7 @@ describe("state routes", () => {
       method: "PATCH",
     });
     const response = await app.request("/api/state/preferences", {
-      body: JSON.stringify({ selectedMode: "staged" }),
+      body: JSON.stringify({ collapseMode: "collapsed" }),
       headers: { "Content-Type": "application/json" },
       method: "PATCH",
     });
@@ -73,7 +73,7 @@ describe("state routes", () => {
       preferences: {
         diffStyle: "unified",
         overflow: "wrap",
-        selectedMode: "staged",
+        collapseMode: "collapsed",
       },
     });
   });
