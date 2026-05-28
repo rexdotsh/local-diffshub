@@ -50,8 +50,14 @@ export function loadWorktrees(path: string): Promise<WorktreesResponse> {
   return postJson("/api/projects/worktrees", { path });
 }
 
-export function loadCommits(path: string): Promise<CommitsResponse> {
-  return postJson("/api/projects/commits", { path });
+export function loadCommits(
+  path: string,
+  branch: string
+): Promise<CommitsResponse> {
+  return postJson("/api/projects/commits", {
+    path,
+    branch,
+  });
 }
 
 export function loadStatus(path: string): Promise<StatusResponse> {

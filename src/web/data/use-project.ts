@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   BranchSummary,
-  CommitSummary,
   ProjectSummary,
   RecentProject,
   WorktreeSummary,
@@ -11,7 +10,6 @@ import {
   apiUrl,
   loadAppState,
   loadBranches,
-  loadCommits,
   loadWorktrees,
   openProject,
 } from "../api";
@@ -22,18 +20,17 @@ type ProjectLoadState = "idle" | "loading" | "ready" | "error";
 
 export type ProjectState = {
   branches: BranchSummary[];
-  commits: CommitSummary[];
   error: string | null;
   loadState: ProjectLoadState;
   open(path: string): Promise<void>;
   project: ProjectSummary | null;
   recentProjects: RecentProject[];
+  refreshSignal: number;
   worktrees: WorktreeSummary[];
 };
 
 type ProjectMetadata = {
   branches: BranchSummary[];
-  commits: CommitSummary[];
   worktrees: WorktreeSummary[];
 };
 
@@ -48,27 +45,25 @@ export function useProject({
 }: ProjectInput): ProjectState {
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [branches, setBranches] = useState<BranchSummary[]>([]);
-  const [commits, setCommits] = useState<CommitSummary[]>([]);
   const [worktrees, setWorktrees] = useState<WorktreeSummary[]>([]);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>(() => [
     ...initialRecentProjects,
   ]);
   const [loadState, setLoadState] = useState<ProjectLoadState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [refreshSignal, setRefreshSignal] = useState(0);
   const requestIdRef = useRef(0);
   const repoRootRef = useRef<string | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchMetadata = useCallback(
     async (repoRoot: string): Promise<ProjectMetadata> => {
-      const [nextBranches, nextCommits, nextWorktrees] = await Promise.all([
+      const [nextBranches, nextWorktrees] = await Promise.all([
         loadBranches(repoRoot),
-        loadCommits(repoRoot).catch(() => ({ commits: [] })),
         loadWorktrees(repoRoot),
       ]);
       return {
         branches: nextBranches.branches,
-        commits: nextCommits.commits,
         worktrees: nextWorktrees.worktrees,
       };
     },
@@ -83,13 +78,10 @@ export function useProject({
       try {
         const summary = await openProject(nextPath);
         const metadata = await fetchMetadata(summary.repoRoot);
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
+        if (requestId !== requestIdRef.current) return;
         repoRootRef.current = summary.repoRoot;
         setProject(summary);
         setBranches(metadata.branches);
-        setCommits(metadata.commits);
         setWorktrees(metadata.worktrees);
         setLoadState("ready");
         loadAppState()
@@ -100,9 +92,7 @@ export function useProject({
           })
           .catch(() => undefined);
       } catch (loadError) {
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
+        if (requestId !== requestIdRef.current) return;
         setError(
           loadError instanceof Error
             ? loadError.message
@@ -116,34 +106,26 @@ export function useProject({
 
   const quietRefresh = useCallback(async (): Promise<void> => {
     const target = repoRootRef.current;
-    if (target == null) {
-      return;
-    }
+    if (target == null) return;
     try {
       const metadata = await fetchMetadata(target);
-      if (repoRootRef.current !== target) {
-        return;
-      }
+      if (repoRootRef.current !== target) return;
       setBranches(metadata.branches);
-      setCommits(metadata.commits);
       setWorktrees(metadata.worktrees);
+      setRefreshSignal((signal) => signal + 1);
     } catch {
       // Background refresh failures are non-fatal; surface only via SSE indicator.
     }
   }, [fetchMetadata]);
 
   useEffect(() => {
-    if (initialPath == null) {
-      return;
-    }
+    if (initialPath == null) return;
     open(initialPath).catch(() => undefined);
   }, [initialPath, open]);
 
   const repoRoot = project?.repoRoot;
   useEffect(() => {
-    if (repoRoot == null) {
-      return;
-    }
+    if (repoRoot == null) return;
     const events = new EventSource(
       apiUrl(`/events/project?path=${encodeURIComponent(repoRoot)}`),
       { withCredentials: true }
@@ -176,12 +158,12 @@ export function useProject({
 
   return {
     branches,
-    commits,
     error,
     loadState,
     open,
     project,
     recentProjects,
+    refreshSignal,
     worktrees,
   };
 }

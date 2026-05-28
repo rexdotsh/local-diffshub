@@ -16,9 +16,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import type { BranchSummary, CommitSummary, DiffMode } from "../../shared/api";
+import type { BranchSummary, CommitSummary } from "../../shared/api";
 
 export type ChangesScope = "combined" | "staged" | "unstaged";
+export type ViewKind = "changes" | "branch";
 
 const CHANGES_PILL_LABEL: Record<ChangesScope, string> = {
   combined: "Changes",
@@ -51,73 +52,64 @@ const RELATIVE_UNITS: ReadonlyArray<{
   { ms: 2_592_000_000, unit: "day" },
 ];
 
-export function isChangesScope(mode: DiffMode): mode is ChangesScope {
-  return mode === "combined" || mode === "staged" || mode === "unstaged";
-}
-
 type ModePillsProps = {
+  branch: string | undefined;
   branches: BranchSummary[];
   className?: string | undefined;
-  commits: CommitSummary[];
-  lastChangesScope: ChangesScope;
-  mode: DiffMode;
+  commit: string | undefined;
+  commits: readonly CommitSummary[];
+  defaultBranchName: string;
+  onChangeScope(scope: ChangesScope): void;
   onSelectBranch(branch: string): void;
-  onSelectCommit(commit: string): void;
-  onSetMode(mode: DiffMode): void;
-  selectedBranch: string | undefined;
-  selectedCommit: string | undefined;
+  onSelectCommit(commit: string | undefined): void;
+  scope: ChangesScope;
+  view: ViewKind;
 };
 
 export function ModePills({
+  branch,
   branches,
   className,
+  commit,
   commits,
-  lastChangesScope,
-  mode,
+  defaultBranchName,
+  onChangeScope,
   onSelectBranch,
   onSelectCommit,
-  onSetMode,
-  selectedBranch,
-  selectedCommit,
+  scope,
+  view,
 }: ModePillsProps) {
-  const changesScope: ChangesScope = isChangesScope(mode)
-    ? mode
-    : lastChangesScope;
-
   return (
     <div className={cn("flex h-7 items-center gap-1", className)}>
       <ChangesPill
-        active={isChangesScope(mode)}
-        onActivate={() => onSetMode(lastChangesScope)}
-        onChange={(next) => onSetMode(next)}
-        scope={changesScope}
+        active={view === "changes"}
+        onChange={onChangeScope}
+        scope={scope}
       />
       <BranchPill
-        active={mode === "branch"}
+        active={view === "branch"}
         branches={branches}
-        onActivate={() => onSetMode("branch")}
         onSelect={onSelectBranch}
-        selected={selectedBranch}
+        selected={branch}
       />
-      <CommitPill
-        active={mode === "commit"}
-        commits={commits}
-        onActivate={() => onSetMode("commit")}
-        onSelect={onSelectCommit}
-        selected={selectedCommit}
-      />
+      {view === "branch" ? (
+        <CommitPill
+          commit={commit}
+          commits={commits}
+          defaultBranchName={defaultBranchName}
+          onSelect={onSelectCommit}
+        />
+      ) : null}
     </div>
   );
 }
 
 function ChangesPill({
   active,
-  onActivate,
   onChange,
   scope,
 }: {
   active: boolean;
-  onActivate(): void;
   onChange(next: ChangesScope): void;
   scope: ChangesScope;
 }) {
@@ -125,9 +117,6 @@ function ChangesPill({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(PILL_BASE, active ? PILL_ACTIVE : PILL_INACTIVE)}
-        onClick={() => {
-          if (!active) onActivate();
-        }}
       >
         <span>{CHANGES_PILL_LABEL[scope]}</span>
         <IconChevronSm aria-hidden className="size-3 opacity-60" />
@@ -137,7 +126,7 @@ function ChangesPill({
         className="w-44 max-w-[calc(100vw-1rem)]"
       >
         <DropdownMenuRadioGroup
-          onValueChange={(v) => onChange(v as ChangesScope)}
+          onValueChange={(value) => onChange(value as ChangesScope)}
           value={scope}
         >
           {CHANGES_OPTIONS.map((option) => (
@@ -154,13 +143,11 @@ function ChangesPill({
 function BranchPill({
   active,
   branches,
-  onActivate,
   onSelect,
   selected,
 }: {
   active: boolean;
   branches: BranchSummary[];
-  onActivate(): void;
   onSelect(name: string): void;
   selected: string | undefined;
 }) {
@@ -168,9 +155,6 @@ function BranchPill({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(PILL_BASE, active ? PILL_ACTIVE : PILL_INACTIVE)}
-        onClick={() => {
-          if (!active) onActivate();
-        }}
       >
         <IconBranch aria-hidden className="size-3 opacity-60" />
         <span className="max-w-[8rem] truncate md:max-w-[10rem]">
@@ -193,37 +177,53 @@ function BranchPill({
 }
 
 function CommitPill({
-  active,
+  commit,
   commits,
-  onActivate,
+  defaultBranchName,
   onSelect,
-  selected,
 }: {
-  active: boolean;
-  commits: CommitSummary[];
-  onActivate(): void;
-  onSelect(hash: string): void;
-  selected: string | undefined;
+  commit: string | undefined;
+  commits: readonly CommitSummary[];
+  defaultBranchName: string;
+  onSelect(commit: string | undefined): void;
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(PILL_BASE, active ? PILL_ACTIVE : PILL_INACTIVE)}
-        onClick={() => {
-          if (!active) onActivate();
-        }}
-      >
+      <DropdownMenuTrigger className={cn(PILL_BASE, PILL_ACTIVE)}>
         <IconCommit aria-hidden className="size-3 opacity-60" />
-        <span className="font-mono">
-          {selected == null ? "Commit" : shortHash(selected)}
-        </span>
+        {commit == null ? (
+          <span>Entire branch</span>
+        ) : (
+          <span className="font-mono">{shortHash(commit)}</span>
+        )}
         <IconChevronSm aria-hidden className="size-3 opacity-60" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
         className="max-h-96 w-80 max-w-[calc(100vw-1rem)]"
       >
-        <CommitList commits={commits} onSelect={onSelect} selected={selected} />
+        <DropdownMenuItem
+          className="justify-between gap-2"
+          onClick={() => onSelect(undefined)}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <SelectedIndicator selected={commit == null} />
+            <span>Entire branch</span>
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            vs {defaultBranchName}
+          </span>
+        </DropdownMenuItem>
+        {commits.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <CommitList
+              commits={commits}
+              onSelect={onSelect}
+              selected={commit}
+            />
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -308,12 +308,14 @@ function CommitList({
   onSelect,
   selected,
 }: {
-  commits: CommitSummary[];
+  commits: readonly CommitSummary[];
   onSelect(hash: string): void;
   selected: string | undefined;
 }) {
   if (commits.length === 0) {
-    return <DropdownMenuItem disabled>No commits loaded</DropdownMenuItem>;
+    return (
+      <DropdownMenuItem disabled>No commits on this branch</DropdownMenuItem>
+    );
   }
   return (
     <>

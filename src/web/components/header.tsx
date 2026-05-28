@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import type {
   BranchSummary,
   CommitSummary,
-  DiffMode,
   ProjectSummary,
   RecentProject,
   WorktreeSummary,
@@ -18,27 +17,28 @@ import type {
   HunkSeparatorStyle,
   OverflowMode,
 } from "../types";
-import { type ChangesScope, ModePills } from "./mode-pills";
+import { type ChangesScope, ModePills, type ViewKind } from "./mode-pills";
 import { ProjectMenu } from "./project-menu";
 import { ThemeMenu } from "./theme-menu";
 import { ViewMenu } from "./view-menu";
 
 type HeaderProps = {
+  branch: string | undefined;
   branches: BranchSummary[];
   chromeStyle?: CSSProperties | undefined;
   collapseMode: "expanded" | "collapsed";
   colorMode: ColorMode;
-  commits: CommitSummary[];
+  commit: string | undefined;
+  commits: readonly CommitSummary[];
   darkTheme: DarkTheme;
+  defaultBranchName: string;
   diffIndicators: DiffIndicators;
   diffStyle: DiffStyle;
   fileTreeAvailable: boolean;
   fileTreeOverlayOpen: boolean;
   hunkSeparators: HunkSeparatorStyle;
-  lastChangesScope: ChangesScope;
   lightTheme: LightTheme;
   lineNumbers: boolean;
-  mode: DiffMode;
   onChangeCollapseMode(mode: "expanded" | "collapsed"): void;
   onChangeColorMode(mode: ColorMode): void;
   onChangeDarkTheme(theme: DarkTheme): void;
@@ -47,39 +47,40 @@ type HeaderProps = {
   onChangeHunkSeparators(separators: HunkSeparatorStyle): void;
   onChangeLightTheme(theme: LightTheme): void;
   onChangeLineNumbers(enabled: boolean): void;
-  onChangeMode(mode: DiffMode): void;
   onChangeOverflow(overflow: OverflowMode): void;
+  onChangeScope(scope: ChangesScope): void;
   onChangeShowBackgrounds(show: boolean): void;
   onOpenProject(path: string): void;
   onReload(): void;
   onSelectBranch(branch: string): void;
-  onSelectCommit(commit: string): void;
+  onSelectCommit(commit: string | undefined): void;
   onToggleFileTreeOverlay(): void;
   overflow: OverflowMode;
   project: ProjectSummary | null;
   recentProjects: RecentProject[];
-  selectedBranch: string | undefined;
-  selectedCommit: string | undefined;
+  scope: ChangesScope;
   showBackgrounds: boolean;
+  view: ViewKind;
   worktrees: WorktreeSummary[];
 };
 
 export const Header = memo(function Header({
+  branch,
   branches,
   chromeStyle,
   collapseMode,
   colorMode,
+  commit,
   commits,
   darkTheme,
+  defaultBranchName,
   diffIndicators,
   diffStyle,
   fileTreeAvailable,
   fileTreeOverlayOpen,
   hunkSeparators,
-  lastChangesScope,
   lightTheme,
   lineNumbers,
-  mode,
   onChangeCollapseMode,
   onChangeColorMode,
   onChangeDarkTheme,
@@ -88,8 +89,8 @@ export const Header = memo(function Header({
   onChangeHunkSeparators,
   onChangeLightTheme,
   onChangeLineNumbers,
-  onChangeMode,
   onChangeOverflow,
+  onChangeScope,
   onChangeShowBackgrounds,
   onOpenProject,
   onReload,
@@ -99,9 +100,9 @@ export const Header = memo(function Header({
   overflow,
   project,
   recentProjects,
-  selectedBranch,
-  selectedCommit,
+  scope,
   showBackgrounds,
+  view,
   worktrees,
 }: HeaderProps) {
   return (
@@ -120,16 +121,17 @@ export const Header = memo(function Header({
         worktrees={worktrees}
       />
       <ModePills
+        branch={branch}
         branches={branches}
         className="no-scrollbar order-last w-full overflow-x-auto md:order-none md:w-auto md:overflow-visible"
+        commit={commit}
         commits={commits}
-        lastChangesScope={lastChangesScope}
-        mode={mode}
+        defaultBranchName={defaultBranchName}
+        onChangeScope={onChangeScope}
         onSelectBranch={onSelectBranch}
         onSelectCommit={onSelectCommit}
-        onSetMode={onChangeMode}
-        selectedBranch={selectedBranch}
-        selectedCommit={selectedCommit}
+        scope={scope}
+        view={view}
       />
       <div className="inline-flex items-center gap-0.5 md:ml-auto">
         <Button

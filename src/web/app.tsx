@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -17,7 +18,7 @@ import type {
 import { loadAppState, updatePreferences } from "./api";
 import { CodeViewWrapper } from "./components/code-view";
 import { Header } from "./components/header";
-import { type ChangesScope, isChangesScope } from "./components/mode-pills";
+import type { ChangesScope, ViewKind } from "./components/mode-pills";
 import { Sidebar } from "./components/sidebar";
 import { StatusPanel } from "./components/status-panel";
 import {
@@ -25,6 +26,7 @@ import {
   parseLineHash,
   replaceLocationHash,
 } from "./data/line-hash";
+import { useBranchCommits } from "./data/use-branch-commits";
 import { type CollapseMode, useDiffSession } from "./data/use-diff-session";
 import { usePersistedState } from "./data/use-persisted-state";
 import { useProject } from "./data/use-project";
@@ -137,12 +139,28 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
   });
 
   const [viewUrlState, setViewUrlState] = useViewUrlState();
-  const mode: DiffMode =
-    viewUrlState.mode === "changes" ? viewUrlState.scope : viewUrlState.mode;
-  const lastChangesScope: ChangesScope = viewUrlState.scope;
+  const view: ViewKind = viewUrlState.view;
+  const scope: ChangesScope = viewUrlState.scope;
   const selectedBranch = viewUrlState.branch;
   const selectedCommit = viewUrlState.commit;
   const selectedFile = viewUrlState.file;
+
+  const mode: DiffMode =
+    view === "changes" ? scope : selectedCommit != null ? "commit" : "branch";
+  const sessionBranch = view === "branch" ? selectedBranch : undefined;
+  const sessionCommit = view === "branch" ? selectedCommit : undefined;
+
+  const validBranchForCommits = useMemo(() => {
+    if (selectedBranch == null) return undefined;
+    return project.branches.some((branch) => branch.name === selectedBranch)
+      ? selectedBranch
+      : undefined;
+  }, [project.branches, selectedBranch]);
+  const branchCommits = useBranchCommits(
+    project.project?.repoRoot,
+    validBranchForCommits,
+    project.refreshSignal
+  );
   const [diffStyle, setDiffStyle] = useState<DiffStyle>(bootstrap.diffStyle);
   const [overflow, setOverflow] = useState<OverflowMode>(bootstrap.overflow);
   const [showBackgrounds, setShowBackgrounds] = useState(
@@ -197,50 +215,46 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
 
   useEffect(() => {
     if (project.project == null) return;
+    if (view !== "branch") return;
     const summary = project.project;
-    if (viewUrlState.mode === "branch") {
-      if (
-        selectedBranch != null &&
-        project.branches.some((branch) => branch.name === selectedBranch)
-      ) {
-        return;
-      }
-      const fallbackBranch = summary.currentBranch ?? summary.defaultBranch.ref;
-      if (selectedBranch !== fallbackBranch) {
-        setViewUrlState({ branch: fallbackBranch }, "replace");
-      }
+
+    if (
+      selectedBranch == null ||
+      !project.branches.some((branch) => branch.name === selectedBranch)
+    ) {
+      const fallback = summary.currentBranch ?? summary.defaultBranch.ref;
+      setViewUrlState({ branch: fallback, commit: undefined }, "replace");
       return;
     }
-    if (viewUrlState.mode === "commit") {
-      const match = project.commits.find(
-        (commit) =>
-          commit.hash === selectedCommit || commit.shortHash === selectedCommit
-      );
-      if (match != null) {
-        if (match.hash !== selectedCommit) {
-          setViewUrlState({ commit: match.hash }, "replace");
-        }
-        return;
-      }
-      const fallbackCommit = project.commits[0]?.hash;
-      if (selectedCommit !== fallbackCommit) {
-        setViewUrlState({ commit: fallbackCommit }, "replace");
-      }
+
+    if (selectedCommit == null) return;
+    if (branchCommits.loadState !== "ready") return;
+    const match = branchCommits.commits.find(
+      (commit) =>
+        commit.hash === selectedCommit || commit.shortHash === selectedCommit
+    );
+    if (match == null) {
+      setViewUrlState({ commit: undefined }, "replace");
+      return;
+    }
+    if (match.hash !== selectedCommit) {
+      setViewUrlState({ commit: match.hash }, "replace");
     }
   }, [
+    branchCommits.commits,
+    branchCommits.loadState,
     project.branches,
-    project.commits,
     project.project,
     selectedBranch,
     selectedCommit,
     setViewUrlState,
-    viewUrlState.mode,
+    view,
   ]);
 
   const session = useDiffSession({
-    branch: selectedBranch,
+    branch: sessionBranch,
     collapseMode,
-    commit: selectedCommit,
+    commit: sessionCommit,
     enabled: project.project != null,
     mode,
     path: project.project?.repoRoot ?? "",
@@ -309,13 +323,9 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
     updatePreferences(next).catch(() => undefined);
   }, []);
 
-  const handleChangeMode = useCallback(
-    (next: DiffMode) => {
-      if (isChangesScope(next)) {
-        setViewUrlState({ mode: "changes", scope: next }, "push");
-        return;
-      }
-      setViewUrlState({ mode: next }, "push");
+  const handleChangeScope = useCallback(
+    (next: ChangesScope) => {
+      setViewUrlState({ view: "changes", scope: next }, "push");
     },
     [setViewUrlState]
   );
@@ -393,13 +403,16 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
 
   const handleSelectBranch = useCallback(
     (next: string) => {
-      setViewUrlState({ branch: next, mode: "branch" }, "push");
+      setViewUrlState(
+        { branch: next, commit: undefined, view: "branch" },
+        "push"
+      );
     },
     [setViewUrlState]
   );
   const handleSelectCommit = useCallback(
-    (next: string) => {
-      setViewUrlState({ commit: next, mode: "commit" }, "push");
+    (next: string | undefined) => {
+      setViewUrlState({ commit: next }, "push");
     },
     [setViewUrlState]
   );
@@ -411,6 +424,25 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
     },
     [project]
   );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.key.toLowerCase() !== "r" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isEditableTarget(event.target)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      session.reload();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [session.reload]);
 
   const appliedFileKeyRef = useRef<string | null>(null);
   const handleSelectPath = useCallback(
@@ -474,21 +506,22 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
       }
     >
       <Header
+        branch={selectedBranch}
         branches={project.branches}
         chromeStyle={chromeStyle}
         collapseMode={collapseMode}
         colorMode={colorMode}
-        commits={project.commits}
+        commit={selectedCommit}
+        commits={branchCommits.commits}
         darkTheme={darkTheme}
+        defaultBranchName={project.project?.defaultBranch.name ?? "main"}
         diffIndicators={diffIndicators}
         diffStyle={diffStyle}
         fileTreeAvailable={fileTreeAvailable}
         fileTreeOverlayOpen={mobileSidebarOpen}
         hunkSeparators={hunkSeparators}
-        lastChangesScope={lastChangesScope}
         lightTheme={lightTheme}
         lineNumbers={lineNumbers}
-        mode={mode}
         onChangeCollapseMode={handleChangeCollapseMode}
         onChangeColorMode={handleChangeColorMode}
         onChangeDarkTheme={handleChangeDarkTheme}
@@ -497,8 +530,8 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         onChangeHunkSeparators={handleChangeHunkSeparators}
         onChangeLightTheme={handleChangeLightTheme}
         onChangeLineNumbers={handleChangeLineNumbers}
-        onChangeMode={handleChangeMode}
         onChangeOverflow={handleChangeOverflow}
+        onChangeScope={handleChangeScope}
         onChangeShowBackgrounds={handleChangeShowBackgrounds}
         onOpenProject={handleOpenProject}
         onReload={session.reload}
@@ -508,9 +541,9 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         overflow={overflow}
         project={project.project}
         recentProjects={project.recentProjects}
-        selectedBranch={selectedBranch}
-        selectedCommit={selectedCommit}
+        scope={scope}
         showBackgrounds={showBackgrounds}
+        view={view}
         worktrees={project.worktrees}
       />
       {errorBanner == null ? (
@@ -585,4 +618,11 @@ function revealDiffItem(
     id: itemId,
     type: "item",
   });
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tagName = target.tagName;
+  return tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT";
 }

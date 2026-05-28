@@ -3,10 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { DiffMode } from "../../shared/api";
 
 type ChangesScope = Extract<DiffMode, "combined" | "staged" | "unstaged">;
-type ViewMode = "changes" | "branch" | "commit";
+type View = "changes" | "branch";
 
 export type ViewUrlState = {
-  mode: ViewMode;
+  view: View;
   scope: ChangesScope;
   branch?: string;
   commit?: string;
@@ -19,7 +19,7 @@ type ViewUrlPatch = {
 type HistoryMode = "push" | "replace";
 
 const DEFAULT_VIEW_URL_STATE: ViewUrlState = {
-  mode: "changes",
+  view: "changes",
   scope: "combined",
 };
 
@@ -39,6 +39,7 @@ export function useViewUrlState(): readonly [
     (patch: ViewUrlPatch, historyMode: HistoryMode = "replace") => {
       setState((current) => {
         const next = normalizeViewUrlState({ ...current, ...patch });
+        if (areEqual(current, next)) return current;
         writeViewUrlState(next, historyMode);
         return next;
       });
@@ -58,7 +59,7 @@ function writeViewUrlState(
   historyMode: HistoryMode
 ): void {
   const params = readSearchParams();
-  params.set("mode", state.mode);
+  params.set("view", state.view);
   params.set("scope", state.scope);
   setOptionalParam(params, "branch", state.branch);
   setOptionalParam(params, "commit", state.commit);
@@ -76,15 +77,28 @@ function writeViewUrlState(
 }
 
 function normalizeViewUrlState(input: ViewUrlPatch): ViewUrlState {
-  const mode = parseViewMode(input.mode);
+  const view = parseView(input.view);
   const scope = parseScope(input.scope);
+  const isBranchView = view === "branch";
   return {
-    mode,
+    view,
     scope,
     ...(isNonEmpty(input.branch) ? { branch: input.branch } : {}),
-    ...(isNonEmpty(input.commit) ? { commit: input.commit } : {}),
+    ...(isBranchView && isNonEmpty(input.commit)
+      ? { commit: input.commit }
+      : {}),
     ...(isNonEmpty(input.file) ? { file: input.file } : {}),
   };
+}
+
+function areEqual(a: ViewUrlState, b: ViewUrlState): boolean {
+  return (
+    a.view === b.view &&
+    a.scope === b.scope &&
+    a.branch === b.branch &&
+    a.commit === b.commit &&
+    a.file === b.file
+  );
 }
 
 function readSearchParams(): URLSearchParams {
@@ -103,10 +117,8 @@ function setOptionalParam(
   }
 }
 
-function parseViewMode(value: unknown): ViewMode {
-  return value === "branch" || value === "commit" || value === "changes"
-    ? value
-    : DEFAULT_VIEW_URL_STATE.mode;
+function parseView(value: unknown): View {
+  return value === "branch" ? "branch" : DEFAULT_VIEW_URL_STATE.view;
 }
 
 function parseScope(value: unknown): ChangesScope {

@@ -72,7 +72,7 @@ describe("project routes", () => {
       method: "POST",
     });
     const commits = await app.request("/api/projects/commits", {
-      body,
+      body: JSON.stringify({ path: repoPath, branch: "main" }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
     });

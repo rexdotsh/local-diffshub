@@ -22,6 +22,7 @@ describe("repository git readers", () => {
 
     const branches = await listBranches(repoPath);
 
+    expect(branches[0]?.name).toBe("main");
     expect(branches.some((branch) => branch.name === "main")).toBe(true);
     expect(branches.some((branch) => branch.name === "feature/demo")).toBe(
       true
@@ -43,7 +44,7 @@ describe("repository git readers", () => {
   test("lists recent commits", async () => {
     const repoPath = await createGitRepository();
 
-    const commits = await listCommits(repoPath);
+    const commits = await listCommits(repoPath, "main");
 
     expect(commits).toHaveLength(1);
     expect(commits[0]).toMatchObject({
@@ -52,6 +53,23 @@ describe("repository git readers", () => {
       subject: "initial",
     });
     expect(commits[0]?.hash).toHaveLength(40);
+  });
+
+  test("lists commits for a selected branch", async () => {
+    const repoPath = await createGitRepository();
+    await runGitSetup(repoPath, ["checkout", "-b", "feature/demo"]);
+    await writeFile(join(repoPath, "feature.txt"), "feature\n");
+    await runGitSetup(repoPath, ["add", "feature.txt"]);
+    await runGitSetup(repoPath, ["commit", "-m", "feature work"]);
+    await runGitSetup(repoPath, ["checkout", "main"]);
+    await writeFile(join(repoPath, "main.txt"), "main\n");
+    await runGitSetup(repoPath, ["add", "main.txt"]);
+    await runGitSetup(repoPath, ["commit", "-m", "main work"]);
+
+    const commits = await listCommits(repoPath, "feature/demo");
+
+    expect(commits.map((commit) => commit.subject)).toContain("feature work");
+    expect(commits.map((commit) => commit.subject)).not.toContain("main work");
   });
 
   test("summarizes working tree status", async () => {

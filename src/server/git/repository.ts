@@ -11,12 +11,15 @@ import { openProject } from "./project";
 const FIELD_SEPARATOR = "\t";
 const COMMIT_FIELD_COUNT = 5;
 
+type BranchRecord = BranchSummary & { committerDate: number };
+
 export async function listBranches(path: string): Promise<BranchSummary[]> {
   const project = await openProject(path);
   const output = await gitStdout(
     [
       "for-each-ref",
-      "--format=%(refname:short)%09%(refname)%09%(objectname)%09%(upstream:short)%09%(HEAD)",
+      "--sort=-committerdate",
+      "--format=%(refname:short)%09%(refname)%09%(objectname)%09%(upstream:short)%09%(HEAD)%09%(committerdate:unix)",
       "refs/heads",
       "refs/remotes",
     ],
@@ -27,7 +30,9 @@ export async function listBranches(path: string): Promise<BranchSummary[]> {
     .split("\n")
     .filter((line) => line.trim() !== "")
     .map(parseBranchLine)
-    .filter((branch) => !branch.ref.endsWith("/HEAD"));
+    .filter((branch) => !branch.ref.endsWith("/HEAD"))
+    .sort((a, b) => compareBranches(a, b, project.defaultBranch.ref))
+    .map(({ committerDate: _committerDate, ...branch }) => branch);
 }
 
 export async function listWorktrees(path: string): Promise<WorktreeSummary[]> {
@@ -48,14 +53,23 @@ export async function readStatus(path: string): Promise<StatusSummary> {
   return parseStatus(output);
 }
 
-export async function listCommits(path: string): Promise<CommitSummary[]> {
+export async function listCommits(
+  path: string,
+  branch: string
+): Promise<CommitSummary[]> {
   const project = await openProject(path);
+  const target = await resolveBranchCommitRange(
+    project.repoRoot,
+    project.defaultBranch.ref,
+    branch
+  );
   const result = await tryGit(
     [
       "log",
       "--max-count=50",
+      "--first-parent",
       "--format=%H%x00%h%x00%an%x00%aI%x00%s%x00",
-      "HEAD",
+      target,
       "--",
     ],
     { cwd: project.repoRoot }
@@ -64,8 +78,9 @@ export async function listCommits(path: string): Promise<CommitSummary[]> {
   return result == null ? [] : parseCommitLog(result.stdout);
 }
 
-function parseBranchLine(line: string): BranchSummary {
-  const [name, ref, commit, upstream, head] = line.split(FIELD_SEPARATOR);
+function parseBranchLine(line: string): BranchRecord {
+  const [name, ref, commit, upstream, head, committerDateRaw] =
+    line.split(FIELD_SEPARATOR);
   if (name == null || ref == null || commit == null) {
     throw new Error("Unable to parse git branch output.");
   }
@@ -77,7 +92,61 @@ function parseBranchLine(line: string): BranchSummary {
     ref,
     type: ref.startsWith("refs/remotes/") ? "remote" : "local",
     upstream: upstream == null || upstream === "" ? null : upstream,
+    committerDate: Number.parseInt(committerDateRaw ?? "0", 10) || 0,
   };
+}
+
+function compareBranches(
+  a: BranchRecord,
+  b: BranchRecord,
+  defaultRef: string
+): number {
+  return (
+    branchRank(a, defaultRef) - branchRank(b, defaultRef) ||
+    b.committerDate - a.committerDate ||
+    a.name.localeCompare(b.name)
+  );
+}
+
+function branchRank(branch: BranchSummary, defaultRef: string): number {
+  if (
+    branch.name === defaultRef ||
+    branch.name === defaultRef.replace(/^origin\//, "")
+  ) {
+    return branch.type === "local" ? 0 : 1;
+  }
+  if (branch.current) return 2;
+  return branch.type === "local" ? 3 : 4;
+}
+
+async function resolveBranchCommitRange(
+  cwd: string,
+  defaultRef: string,
+  branch: string
+): Promise<string> {
+  const [defaultCommit, branchCommit] = await Promise.all([
+    assertCommitRef(cwd, defaultRef),
+    assertCommitRef(cwd, branch),
+  ]);
+  const mergeBase = await tryGit(["merge-base", defaultCommit, branchCommit], {
+    cwd,
+  });
+  const baseCommit = mergeBase?.stdout.trim();
+  if (baseCommit == null || baseCommit === "" || baseCommit === branchCommit) {
+    return branchCommit;
+  }
+  return `${baseCommit}..${branchCommit}`;
+}
+
+async function assertCommitRef(cwd: string, ref: string): Promise<string> {
+  const result = await tryGit(
+    ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`],
+    { cwd }
+  );
+  if (result == null) {
+    throw new Error(`Unknown Git ref: ${ref}`);
+  }
+  return result.stdout.trim();
 }
 
 function parseWorktreeList(output: string): WorktreeSummary[] {

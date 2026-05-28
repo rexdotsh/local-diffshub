@@ -2,6 +2,7 @@ import { basename } from "node:path";
 import { Hono } from "hono";
 
 import {
+  commitsRequestSchema,
   openProjectRequestSchema,
   projectPathRequestSchema,
   type ProjectSummary,
@@ -63,9 +64,13 @@ export function createProjectRoutes(store: StateStore): Hono {
   });
 
   app.post("/commits", async (context) => {
-    const path = await readProjectPath(context.req.raw);
+    const body = await parseJsonBody(
+      context.req.raw,
+      commitsRequestSchema,
+      "Invalid commits payload."
+    );
     return context.json({
-      commits: await readGitProject(() => listCommits(path)),
+      commits: await readGitProject(() => listCommits(body.path, body.branch)),
     });
   });
 

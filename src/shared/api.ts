@@ -91,6 +91,11 @@ export const projectPathRequestSchema = z.strictObject({
   path: projectPathSchema,
 });
 
+export const commitsRequestSchema = z.strictObject({
+  branch: z.string().min(1),
+  path: projectPathSchema,
+});
+
 const defaultBranchSchema = z.object({
   name: z.string().min(1),
   ref: z.string().min(1),
@@ -197,6 +202,7 @@ export type DefaultBranch = z.output<typeof defaultBranchSchema>;
 export type ProjectSummary = z.output<typeof projectSummarySchema>;
 export type BranchSummary = z.output<typeof branchSummarySchema>;
 export type BranchesResponse = z.output<typeof branchesResponseSchema>;
+export type CommitsRequest = z.output<typeof commitsRequestSchema>;
 export type WorktreeSummary = z.output<typeof worktreeSummarySchema>;
 export type WorktreesResponse = z.output<typeof worktreesResponseSchema>;
 export type StatusEntry = z.output<typeof statusEntrySchema>;
