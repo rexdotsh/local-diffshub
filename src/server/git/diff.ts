@@ -60,26 +60,6 @@ export async function buildDiffCommand(
     return { cwd: project.repoRoot, args: [...SHOW_BASE_ARGS, commit, "--"] };
   }
 
-  if (request.mode === "full") {
-    const branch = request.branch ?? project.currentBranch;
-    if (branch == null) {
-      return { cwd: project.repoRoot, args: [...DIFF_BASE_ARGS, "HEAD", "--"] };
-    }
-    const defaultCommit = await assertCommitRef(
-      project.repoRoot,
-      project.defaultBranch.ref
-    );
-    const branchCommit = await assertCommitRef(project.repoRoot, branch);
-    const mergeBase = await gitStdout(
-      ["merge-base", defaultCommit, branchCommit],
-      project.repoRoot
-    );
-    return {
-      cwd: project.repoRoot,
-      args: [...DIFF_BASE_ARGS, mergeBase, "--"],
-    };
-  }
-
   throw new Error("Unsupported diff mode.");
 }
 
@@ -99,11 +79,4 @@ async function assertCommitRef(cwd: string, ref: string): Promise<string> {
     }
     throw error;
   }
-}
-
-async function gitStdout(
-  args: readonly string[],
-  cwd: string
-): Promise<string> {
-  return (await runGit(args, { cwd })).stdout.trim();
 }

@@ -37,7 +37,6 @@ const diffModeSchema = z.enum([
   "staged",
   "unstaged",
   "combined",
-  "full",
 ]);
 
 const recentProjectSchema = z.object({
@@ -183,11 +182,6 @@ export const diffStreamRequestSchema = z.discriminatedUnion("mode", [
     path: projectPathSchema,
     mode: z.literal("commit"),
     commit: z.string().min(1),
-  }),
-  z.strictObject({
-    path: projectPathSchema,
-    mode: z.literal("full"),
-    branch: z.string().min(1).optional(),
   }),
 ]);
 

@@ -17,6 +17,7 @@ import type {
 import { loadAppState, updatePreferences } from "./api";
 import { CodeViewWrapper } from "./components/code-view";
 import { Header } from "./components/header";
+import { type ChangesScope, isChangesScope } from "./components/mode-pills";
 import { Sidebar } from "./components/sidebar";
 import { StatusPanel } from "./components/status-panel";
 import {
@@ -138,6 +139,9 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
   });
 
   const [mode, setMode] = useState<DiffMode>(bootstrap.mode);
+  const [lastChangesScope, setLastChangesScope] = useState<ChangesScope>(() =>
+    isChangesScope(bootstrap.mode) ? bootstrap.mode : "combined"
+  );
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>();
   const [selectedCommit, setSelectedCommit] = useState<string | undefined>();
   const [diffStyle, setDiffStyle] = useState<DiffStyle>(bootstrap.diffStyle);
@@ -290,6 +294,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
   const handleChangeMode = useCallback(
     (next: DiffMode) => {
       setMode(next);
+      if (isChangesScope(next)) setLastChangesScope(next);
       persist({ selectedMode: next });
     },
     [persist]
@@ -430,6 +435,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         diffIndicators={diffIndicators}
         diffStyle={diffStyle}
         hunkSeparators={hunkSeparators}
+        lastChangesScope={lastChangesScope}
         lightTheme={lightTheme}
         lineNumbers={lineNumbers}
         mode={mode}

@@ -16,9 +16,8 @@ import type {
   HunkSeparatorStyle,
   OverflowMode,
 } from "../types";
-import { ModeTabs } from "./mode-tabs";
+import { type ChangesScope, ModePills } from "./mode-pills";
 import { ProjectMenu } from "./project-menu";
-import { RefMenu } from "./ref-menu";
 import { ThemeMenu } from "./theme-menu";
 import { ViewMenu } from "./view-menu";
 
@@ -32,6 +31,7 @@ type HeaderProps = {
   diffIndicators: DiffIndicators;
   diffStyle: DiffStyle;
   hunkSeparators: HunkSeparatorStyle;
+  lastChangesScope: ChangesScope;
   lightTheme: LightTheme;
   lineNumbers: boolean;
   mode: DiffMode;
@@ -69,6 +69,7 @@ export const Header = memo(function Header({
   diffIndicators,
   diffStyle,
   hunkSeparators,
+  lastChangesScope,
   lightTheme,
   lineNumbers,
   mode,
@@ -109,13 +110,14 @@ export const Header = memo(function Header({
         recentProjects={recentProjects}
         worktrees={worktrees}
       />
-      <ModeTabs mode={mode} onChange={onChangeMode} />
-      <RefMenu
+      <ModePills
         branches={branches}
         commits={commits}
+        lastChangesScope={lastChangesScope}
         mode={mode}
         onSelectBranch={onSelectBranch}
         onSelectCommit={onSelectCommit}
+        onSetMode={onChangeMode}
         selectedBranch={selectedBranch}
         selectedCommit={selectedCommit}
       />

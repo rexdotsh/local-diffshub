@@ -66,19 +66,6 @@ describe("buildDiffCommand", () => {
     });
   });
 
-  test("builds full review diff from merge base", async () => {
-    const repoPath = await createGitRepository();
-    const mergeBase = (
-      await runGitSetup(repoPath, ["merge-base", "main", "main"])
-    ).trim();
-
-    await expect(
-      buildDiffCommand({ path: repoPath, mode: "full", branch: "main" })
-    ).resolves.toMatchObject({
-      args: ["diff", "--no-ext-diff", "--no-textconv", mergeBase, "--"],
-    });
-  });
-
   test("rejects unknown branch refs", async () => {
     const repoPath = await createGitRepository();
 
