@@ -1,11 +1,8 @@
-import {
-  type CodeViewItem,
-  type CodeViewLineSelection,
-  type CodeViewOptions,
-  getFiletypeFromFileName,
-  type SelectedLineRange,
-  setLanguageOverride,
-  type SupportedLanguages,
+import type {
+  CodeViewItem,
+  CodeViewLineSelection,
+  CodeViewOptions,
+  SelectedLineRange,
 } from "@pierre/diffs";
 import { CodeView, type CodeViewHandle } from "@pierre/diffs/react";
 import { IconChevronSm } from "@pierre/icons";
@@ -19,7 +16,6 @@ import type {
   HunkSeparatorStyle,
   OverflowMode,
 } from "../types";
-import { LanguageMenu } from "./language-menu";
 
 const CODE_VIEW_LAYOUT = { gap: 1, paddingBottom: 0, paddingTop: 0 };
 
@@ -92,36 +88,6 @@ export function CodeViewWrapper({
     [handleToggleItemCollapsed]
   );
 
-  const applyLanguage = useCallback(
-    (itemId: string, lang: SupportedLanguages) => {
-      const viewer = viewerRef.current;
-      const item = viewer?.getItem(itemId);
-      if (viewer == null || item == null || item.type !== "diff") return;
-      item.fileDiff = setLanguageOverride(item.fileDiff, lang);
-      item.version = (typeof item.version === "number" ? item.version : 0) + 1;
-      viewer.updateItem(item);
-    },
-    [viewerRef]
-  );
-
-  const renderHeaderMetadata = useCallback(
-    (item: CodeViewItem<undefined>) => {
-      if (item.type !== "diff") return null;
-      return (
-        <LanguageMenu
-          fileName={item.fileDiff.name}
-          language={item.fileDiff.lang ?? null}
-          onClear={() => {
-            const inferred = getFiletypeFromFileName(item.fileDiff.name);
-            if (inferred != null) applyLanguage(item.id, inferred);
-          }}
-          onSelect={(lang) => applyLanguage(item.id, lang)}
-        />
-      );
-    },
-    [applyLanguage]
-  );
-
   const onGutterUtilityClick = useCallback(
     (range: SelectedLineRange, context: { item: CodeViewItem<undefined> }) => {
       if (context.item.type !== "diff") return;
@@ -176,7 +142,6 @@ export function CodeViewWrapper({
       onSelectedLinesChange={onSelectedLinesChange}
       options={options}
       ref={viewerRef}
-      renderHeaderMetadata={renderHeaderMetadata}
       renderHeaderPrefix={renderHeaderPrefix}
       selectedLines={selectedLines}
     />
