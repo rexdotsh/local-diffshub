@@ -33,7 +33,7 @@ const CHANGES_OPTIONS: ReadonlyArray<{ label: string; value: ChangesScope }> = [
 ];
 
 const PILL_BASE =
-  "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border px-2 text-xs transition-colors outline-none";
+  "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-2 text-xs transition-colors outline-none";
 const PILL_INACTIVE =
   "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground";
 const PILL_ACTIVE = "border-border/80 bg-muted text-foreground";
@@ -57,6 +57,7 @@ export function isChangesScope(mode: DiffMode): mode is ChangesScope {
 
 type ModePillsProps = {
   branches: BranchSummary[];
+  className?: string | undefined;
   commits: CommitSummary[];
   lastChangesScope: ChangesScope;
   mode: DiffMode;
@@ -69,6 +70,7 @@ type ModePillsProps = {
 
 export function ModePills({
   branches,
+  className,
   commits,
   lastChangesScope,
   mode,
@@ -83,7 +85,7 @@ export function ModePills({
     : lastChangesScope;
 
   return (
-    <div className="inline-flex h-7 items-center gap-1">
+    <div className={cn("flex h-7 items-center gap-1", className)}>
       <ChangesPill
         active={isChangesScope(mode)}
         onActivate={() => onSetMode(lastChangesScope)}
@@ -130,7 +132,10 @@ function ChangesPill({
         <span>{CHANGES_PILL_LABEL[scope]}</span>
         <IconChevronSm aria-hidden className="size-3 opacity-60" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44">
+      <DropdownMenuContent
+        align="start"
+        className="w-44 max-w-[calc(100vw-1rem)]"
+      >
         <DropdownMenuRadioGroup
           onValueChange={(v) => onChange(v as ChangesScope)}
           value={scope}
@@ -168,10 +173,15 @@ function BranchPill({
         }}
       >
         <IconBranch aria-hidden className="size-3 opacity-60" />
-        <span className="max-w-[10rem] truncate">{selected ?? "Branch"}</span>
+        <span className="max-w-[8rem] truncate md:max-w-[10rem]">
+          {selected ?? "Branch"}
+        </span>
         <IconChevronSm aria-hidden className="size-3 opacity-60" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-96 w-72">
+      <DropdownMenuContent
+        align="start"
+        className="max-h-96 w-72 max-w-[calc(100vw-1rem)]"
+      >
         <BranchList
           branches={branches}
           onSelect={onSelect}
@@ -209,7 +219,10 @@ function CommitPill({
         </span>
         <IconChevronSm aria-hidden className="size-3 opacity-60" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-96 w-80">
+      <DropdownMenuContent
+        align="start"
+        className="max-h-96 w-80 max-w-[calc(100vw-1rem)]"
+      >
         <CommitList commits={commits} onSelect={onSelect} selected={selected} />
       </DropdownMenuContent>
     </DropdownMenu>

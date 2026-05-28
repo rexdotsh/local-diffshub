@@ -95,6 +95,7 @@ export function ViewMenu({
         onClick={() =>
           onChangeDiffStyle(diffStyle === "split" ? "unified" : "split")
         }
+        className="hidden md:inline-flex"
         size="icon"
         title={diffStyleLabel}
         type="button"
@@ -127,6 +128,7 @@ export function ViewMenu({
       </Button>
       <Button
         aria-label="Reload diff"
+        className="hidden md:inline-flex"
         onClick={onReload}
         size="icon"
         title="Reload diff"

@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type {
   ProjectSummary,
   RecentProject,
@@ -18,6 +19,7 @@ import type {
 } from "../../shared/api";
 
 type ProjectMenuProps = {
+  className?: string | undefined;
   onOpen(path: string): void;
   project: ProjectSummary | null;
   recentProjects: RecentProject[];
@@ -28,6 +30,7 @@ const TRIGGER_CLASS =
   "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border border-border/60 bg-card/40 px-2 text-xs hover:bg-input/40 aria-expanded:bg-muted";
 
 export function ProjectMenu({
+  className,
   onOpen,
   project,
   recentProjects,
@@ -37,7 +40,6 @@ export function ProjectMenu({
   const [path, setPath] = useState("");
   const projectLabel =
     project == null ? "Open project" : projectDisplayName(project);
-  const projectHint = projectStateLabel(project);
 
   const submit = () => {
     const trimmed = path.trim();
@@ -68,26 +70,23 @@ export function ProjectMenu({
 
   return (
     <DropdownMenu onOpenChange={setOpen} open={open}>
-      <DropdownMenuTrigger className={TRIGGER_CLASS}>
+      <DropdownMenuTrigger className={cn(TRIGGER_CLASS, className)}>
         <IconFolderOpen
           aria-hidden
           className="size-3 shrink-0 text-muted-foreground"
         />
-        <span className="flex min-w-0 items-baseline gap-1.5 leading-none">
-          <span className="truncate font-medium">{projectLabel}</span>
-          <span
-            aria-hidden
-            className="truncate text-[10px] text-muted-foreground"
-          >
-            {projectHint}
-          </span>
+        <span className="min-w-0 truncate font-medium leading-none">
+          {projectLabel}
         </span>
         <IconChevronSm
           aria-hidden
           className="size-3 shrink-0 text-muted-foreground"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-80">
+      <DropdownMenuContent
+        align="start"
+        className="w-80 max-w-[calc(100vw-1rem)]"
+      >
         <form
           aria-label="Open project by path"
           className="flex items-center gap-1 p-1"
@@ -158,16 +157,6 @@ export function ProjectMenu({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-function projectStateLabel(project: ProjectSummary | null): string {
-  if (project == null) {
-    return "no repository open";
-  }
-  if (project.currentBranch != null) {
-    return project.currentBranch;
-  }
-  return "detached HEAD";
 }
 
 function projectDisplayName(project: ProjectSummary): string {

@@ -159,6 +159,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
   const [collapseMode, setCollapseMode] = useState<CollapseMode>(
     bootstrap.collapseMode
   );
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Themes + color mode mirror to localStorage for optimistic restore.
   const [lightTheme, setLightTheme, lightHydrated] =
@@ -200,6 +201,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
   useEffect(() => {
     setSelectedBranch(undefined);
     setSelectedCommit(undefined);
+    setMobileSidebarOpen(false);
   }, [repoRoot]);
 
   useEffect(() => {
@@ -395,6 +397,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
 
   const handleSelectPath = useCallback(
     (itemId: string) => {
+      setMobileSidebarOpen(false);
       const viewer = session.viewerRef.current;
       if (viewer == null) return;
       const item = viewer.getItem(itemId);
@@ -419,6 +422,13 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
     project.project != null &&
     (session.loadState === "ready" || session.loadState === "streaming") &&
     session.items.length > 0;
+  const fileTreeAvailable =
+    session.treeSource != null && session.treeSource.pathCount > 0;
+  useEffect(() => {
+    if (!fileTreeAvailable) {
+      setMobileSidebarOpen(false);
+    }
+  }, [fileTreeAvailable]);
 
   return (
     <div
@@ -439,6 +449,8 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         darkTheme={darkTheme}
         diffIndicators={diffIndicators}
         diffStyle={diffStyle}
+        fileTreeAvailable={fileTreeAvailable}
+        fileTreeOverlayOpen={mobileSidebarOpen}
         hunkSeparators={hunkSeparators}
         lastChangesScope={lastChangesScope}
         lightTheme={lightTheme}
@@ -459,6 +471,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         onReload={session.reload}
         onSelectBranch={handleSelectBranch}
         onSelectCommit={handleSelectCommit}
+        onToggleFileTreeOverlay={() => setMobileSidebarOpen((open) => !open)}
         overflow={overflow}
         project={project.project}
         recentProjects={project.recentProjects}
@@ -477,12 +490,14 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
           {errorBanner}
         </div>
       )}
-      <div className="grid min-h-0 grid-cols-[288px_minmax(0,1fr)]">
+      <div className="relative grid min-h-0 grid-cols-1 overflow-hidden md:grid-cols-[288px_minmax(0,1fr)]">
         <Sidebar
           chromeStyle={chromeStyle}
           darkTheme={darkTheme}
           lightTheme={lightTheme}
           loadState={session.loadState}
+          mobileOverlayOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
           onSelectPath={handleSelectPath}
           resolvedColorMode={resolvedColorMode}
           stats={session.stats}

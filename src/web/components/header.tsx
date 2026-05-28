@@ -1,5 +1,7 @@
+import { IconFileTreeFill } from "@pierre/icons";
 import { memo, type CSSProperties } from "react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type {
   BranchSummary,
@@ -30,6 +32,8 @@ type HeaderProps = {
   darkTheme: DarkTheme;
   diffIndicators: DiffIndicators;
   diffStyle: DiffStyle;
+  fileTreeAvailable: boolean;
+  fileTreeOverlayOpen: boolean;
   hunkSeparators: HunkSeparatorStyle;
   lastChangesScope: ChangesScope;
   lightTheme: LightTheme;
@@ -50,6 +54,7 @@ type HeaderProps = {
   onReload(): void;
   onSelectBranch(branch: string): void;
   onSelectCommit(commit: string): void;
+  onToggleFileTreeOverlay(): void;
   overflow: OverflowMode;
   project: ProjectSummary | null;
   recentProjects: RecentProject[];
@@ -68,6 +73,8 @@ export const Header = memo(function Header({
   darkTheme,
   diffIndicators,
   diffStyle,
+  fileTreeAvailable,
+  fileTreeOverlayOpen,
   hunkSeparators,
   lastChangesScope,
   lightTheme,
@@ -88,6 +95,7 @@ export const Header = memo(function Header({
   onReload,
   onSelectBranch,
   onSelectCommit,
+  onToggleFileTreeOverlay,
   overflow,
   project,
   recentProjects,
@@ -99,12 +107,13 @@ export const Header = memo(function Header({
   return (
     <header
       className={cn(
-        "z-10 flex h-11 items-center gap-2 border-b border-[var(--color-border-opaque,var(--border))] px-2",
+        "z-10 flex min-h-11 flex-wrap items-center gap-1.5 border-b border-[var(--color-border-opaque,var(--border))] px-2 py-1.5 md:h-11 md:flex-nowrap md:gap-2 md:py-0",
         chromeStyle == null && "bg-[var(--app-header-bg)]"
       )}
       style={chromeStyle}
     >
       <ProjectMenu
+        className="min-w-0 max-w-[40vw] md:max-w-none"
         onOpen={onOpenProject}
         project={project}
         recentProjects={recentProjects}
@@ -112,6 +121,7 @@ export const Header = memo(function Header({
       />
       <ModePills
         branches={branches}
+        className="no-scrollbar order-last w-full overflow-x-auto md:order-none md:w-auto md:overflow-visible"
         commits={commits}
         lastChangesScope={lastChangesScope}
         mode={mode}
@@ -121,7 +131,20 @@ export const Header = memo(function Header({
         selectedBranch={selectedBranch}
         selectedCommit={selectedCommit}
       />
-      <div className="ml-auto inline-flex items-center gap-0.5">
+      <div className="inline-flex items-center gap-0.5 md:ml-auto">
+        <Button
+          aria-label={fileTreeOverlayOpen ? "Hide file tree" : "Show file tree"}
+          aria-pressed={fileTreeOverlayOpen}
+          className="md:hidden"
+          disabled={!fileTreeAvailable}
+          onClick={onToggleFileTreeOverlay}
+          size="icon"
+          title={fileTreeOverlayOpen ? "Hide file tree" : "Show file tree"}
+          type="button"
+          variant="ghost"
+        >
+          <IconFileTreeFill aria-hidden />
+        </Button>
         <ThemeMenu
           colorMode={colorMode}
           contentStyle={chromeStyle}
