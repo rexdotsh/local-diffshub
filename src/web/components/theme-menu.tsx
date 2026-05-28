@@ -196,7 +196,7 @@ function ThemeList({
       </DropdownMenuItem>
       <div className="-mx-1 my-1 h-px bg-border/50" />
       <div
-        className="cv-scrollbar max-h-72 overflow-y-auto overscroll-contain"
+        className="cv-mini-scrollbar max-h-72 overflow-y-auto overscroll-contain"
         ref={scrollContainerRef}
       >
         {themes.map((theme) => {

@@ -24,18 +24,23 @@ const TREE_ITEM_HEIGHT = 24;
 const PRESERVE_INPUT_ORDER_SORT: FileTreeSortComparator = () => 0;
 
 const DENSITY_OVERRIDE_STYLES: CSSProperties = {
-  "--trees-density-override": 0.85,
+  "--trees-density-override": 0.8,
   "--trees-padding-inline-override": 8,
   "--trees-git-renamed-color-override": "light-dark(#007aff, #007aff)",
 } as CSSProperties;
 
 const TREE_UNSAFE_CSS = `
+[data-file-tree-virtualized-scroll='true'] {
+  padding-inline-start: 0;
+  padding-inline-end: 0;
+  margin-inline-end: 0;
+}
 [data-file-tree-search-container][data-open='false'] { display: none; }
 [data-file-tree-search-container] {
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 6px;
-  padding-block: 8px;
-  padding-inline: 8px;
+  padding-block: 6px;
+  padding-inline-end: 6px;
 }
 [data-item-contains-git-change='true'] > [data-item-section='git'] { display: none; }
 [data-item-type='folder'] {
@@ -129,7 +134,7 @@ export const DiffFileTree = memo(function DiffFileTree({
 
   return (
     <FileTree
-      className="h-full min-h-0 overflow-auto overscroll-contain"
+      className="ml-2 h-full min-h-0 overflow-auto overscroll-contain"
       model={model}
       style={mergedStyles}
     />

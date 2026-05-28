@@ -279,6 +279,8 @@ function buildThemeChromeStyle(
   const dark = isDarkSurface(bg, primaryFg);
   style["--diffhub-add-fg"] = dark ? "#34d399" : "#047857";
   style["--diffhub-del-fg"] = dark ? "#fb7185" : "#be123c";
+  // Propagate to native UI + `light-dark()` calls in styles.css.
+  style.colorScheme = dark ? "dark" : "light";
   return style as CSSProperties;
 }
 

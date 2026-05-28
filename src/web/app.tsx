@@ -423,7 +423,12 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
   return (
     <div
       className="grid h-svh grid-rows-[auto_auto_minmax(0,1fr)] text-foreground"
-      style={chromeStyle ?? { backgroundColor: "var(--background)" }}
+      style={
+        chromeStyle ?? {
+          backgroundColor: "var(--background)",
+          colorScheme: resolvedColorMode,
+        }
+      }
     >
       <Header
         branches={project.branches}
