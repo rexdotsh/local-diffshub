@@ -202,15 +202,12 @@ function CommitPill({
         align="start"
         className="max-h-96 w-80 max-w-[calc(100vw-1rem)]"
       >
-        <DropdownMenuItem
-          className="justify-between gap-2"
-          onClick={() => onSelect(undefined)}
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <SelectedIndicator selected={commit == null} />
-            <span>Entire branch</span>
+        <DropdownMenuItem className="gap-2" onClick={() => onSelect(undefined)}>
+          <SelectedIndicator selected={commit == null} />
+          <span className="min-w-0 flex-1 truncate text-xs font-medium">
+            Entire branch
           </span>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="shrink-0 text-[10px] text-muted-foreground">
             vs {defaultBranchName}
           </span>
         </DropdownMenuItem>
@@ -286,16 +283,16 @@ function BranchSection({
       </DropdownMenuLabel>
       {items.map((branch) => (
         <DropdownMenuItem
-          className="justify-between gap-2"
+          className="gap-2"
           key={branch.ref}
           onClick={() => onSelect(branch.name)}
         >
-          <span className="flex min-w-0 items-center gap-2">
-            <SelectedIndicator selected={selected === branch.name} />
-            <span className="truncate">{branch.name}</span>
-          </span>
+          <SelectedIndicator selected={selected === branch.name} />
+          <span className="min-w-0 flex-1 truncate text-xs">{branch.name}</span>
           {branch.current ? (
-            <span className="text-[10px] text-emerald-400">current</span>
+            <span className="shrink-0 text-[10px] text-emerald-400">
+              current
+            </span>
           ) : null}
         </DropdownMenuItem>
       ))}
@@ -326,12 +323,12 @@ function CommitList({
           onClick={() => onSelect(commit.hash)}
         >
           <SelectedIndicator selected={selected === commit.hash} />
-          <span className="flex min-w-0 flex-col">
-            <span className="flex w-full items-center justify-between gap-2 text-xs">
-              <span className="truncate font-medium">
+          <span className="flex min-w-0 flex-1 flex-col leading-tight">
+            <span className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-xs font-medium">
                 {commit.subject || "(no subject)"}
               </span>
-              <span className="font-mono text-[10px] text-muted-foreground">
+              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                 {commit.shortHash}
               </span>
             </span>
