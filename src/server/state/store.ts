@@ -82,13 +82,13 @@ export function createStateStore(statePath = resolveStatePath()): StateStore {
 }
 
 function resolveStatePath(): string {
-  if (process.env.LOCAL_DIFFHUB_STATE_PATH != null) {
-    return toAbsolutePath(process.env.LOCAL_DIFFHUB_STATE_PATH);
+  if (process.env.LOCAL_DIFFSHUB_STATE_PATH != null) {
+    return toAbsolutePath(process.env.LOCAL_DIFFSHUB_STATE_PATH);
   }
 
   const dataHome =
     process.env.XDG_DATA_HOME ?? join(homeDirectory(), ".local", "share");
-  return toAbsolutePath(join(dataHome, "local-diffhub", "state.json"));
+  return toAbsolutePath(join(dataHome, "local-diffshub", "state.json"));
 }
 
 async function readState(path: string): Promise<AppState> {

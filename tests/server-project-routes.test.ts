@@ -102,7 +102,7 @@ describe("project routes", () => {
     const app = createProjectsApp(createMemoryStateStore());
 
     const response = await app.request("/api/projects/status", {
-      body: JSON.stringify({ path: "/definitely/missing/local-diffhub" }),
+      body: JSON.stringify({ path: "/definitely/missing/local-diffshub" }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
     });

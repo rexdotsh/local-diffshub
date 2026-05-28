@@ -4,7 +4,7 @@ import type { MiddlewareHandler } from "hono";
 import { isLoopbackHostname, isTrustedOrigin } from "./cors";
 import { createApiErrorResponse } from "./errors";
 
-const AUTH_REALM = "Local Diffhub";
+const AUTH_REALM = "Local Diffshub";
 const BASIC_PREFIX = "Basic ";
 export type AuthConfig = {
   allowLocalhostBypass: boolean;
@@ -20,8 +20,8 @@ type Credentials = {
 export function readAuthConfig(hostname: string): AuthConfig {
   return {
     allowLocalhostBypass: isLoopbackHostname(hostname),
-    user: process.env.LOCAL_DIFFHUB_USER,
-    password: process.env.LOCAL_DIFFHUB_PASSWORD,
+    user: process.env.LOCAL_DIFFSHUB_USER,
+    password: process.env.LOCAL_DIFFSHUB_PASSWORD,
   };
 }
 

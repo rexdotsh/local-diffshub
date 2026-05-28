@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 export async function createGitRepository(): Promise<string> {
   const repoPath = join(
     tmpdir(),
-    `local-diffhub-git-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    `local-diffshub-git-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`
   );
   await mkdir(repoPath, { recursive: true });
   await runGitSetup(repoPath, ["init", "-b", "main"]);
   await runGitSetup(repoPath, ["config", "user.email", "test@example.com"]);
-  await runGitSetup(repoPath, ["config", "user.name", "Local Diffhub Test"]);
+  await runGitSetup(repoPath, ["config", "user.name", "Local Diffshub Test"]);
   await writeFile(join(repoPath, "README.md"), "# test\n");
   await runGitSetup(repoPath, ["add", "README.md"]);
   await runGitSetup(repoPath, ["commit", "-m", "initial"]);

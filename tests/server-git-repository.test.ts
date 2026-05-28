@@ -48,7 +48,7 @@ describe("repository git readers", () => {
 
     expect(commits).toHaveLength(1);
     expect(commits[0]).toMatchObject({
-      author: "Local Diffhub Test",
+      author: "Local Diffshub Test",
       shortHash: expect.any(String),
       subject: "initial",
     });

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export type HealthResponse = {
   ok: boolean;
-  service: "local-diffhub";
+  service: "local-diffshub";
 };
 
 export type ApiErrorCode =
@@ -96,6 +96,24 @@ export const projectPathRequestSchema = z.strictObject({
 export const commitsRequestSchema = z.strictObject({
   branch: z.string().min(1),
   path: projectPathSchema,
+});
+
+export const listDirectoryRequestSchema = z.strictObject({
+  path: z.string().default(""),
+});
+
+const directoryEntryKindSchema = z.enum(["directory", "git-repo"]);
+
+const directoryEntrySchema = z.object({
+  kind: directoryEntryKindSchema,
+  name: z.string().min(1),
+  path: z.string().min(1),
+});
+
+const directoryListingSchema = z.object({
+  entries: z.array(directoryEntrySchema),
+  parent: z.string().min(1).nullable(),
+  path: z.string().min(1),
 });
 
 const defaultBranchSchema = z.object({
@@ -211,6 +229,8 @@ export type StatusSummary = z.output<typeof statusSummarySchema>;
 export type StatusResponse = z.output<typeof statusResponseSchema>;
 export type CommitSummary = z.output<typeof commitSummarySchema>;
 export type CommitsResponse = z.output<typeof commitsResponseSchema>;
+export type DirectoryEntry = z.output<typeof directoryEntrySchema>;
+export type DirectoryListing = z.output<typeof directoryListingSchema>;
 export type DiffMode = z.output<typeof diffModeSchema>;
 export type DiffStreamRequest = z.output<typeof diffStreamRequestSchema>;
 export type ProjectChangeEvent = z.output<typeof projectChangeEventSchema>;
