@@ -9,7 +9,7 @@ type DiffStatsBarProps = {
 
 export function DiffStatsBar({ stats, streaming }: DiffStatsBarProps) {
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border-opaque,var(--border))] px-3 py-2 text-xs">
+    <div className="flex items-center justify-between gap-2 border-t border-[var(--color-border-opaque,var(--border))] px-3 py-2 text-xs">
       <div className="flex min-w-0 items-center gap-3 text-muted-foreground tabular-nums">
         <Stat
           icon={<IconFile aria-hidden className="size-3" />}
@@ -30,8 +30,8 @@ export function DiffStatsBar({ stats, streaming }: DiffStatsBarProps) {
         />
       </div>
       {streaming ? (
-        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-300">
-          streaming
+        <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-300">
+          live
         </span>
       ) : null}
     </div>
@@ -50,10 +50,13 @@ function Stat({
   value: number;
 }) {
   return (
-    <span className={`inline-flex items-center gap-1 ${className}`}>
+    <span
+      className={`inline-flex items-center gap-1 ${className}`}
+      title={`${value} ${label}`}
+    >
       {icon}
       <span className="font-medium">{value}</span>
-      <span className="text-muted-foreground/70">{label}</span>
+      <span className="sr-only">{label}</span>
     </span>
   );
 }
