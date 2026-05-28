@@ -418,12 +418,17 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
   );
 
   const handleOpenProject = useCallback(
-    (path: string) => {
+    async (path: string): Promise<void> => {
       setMobileSidebarOpen(false);
-      project.open(path).catch(() => undefined);
+      await project.open(path);
     },
     [project]
   );
+
+  const handleRefresh = useCallback(() => {
+    session.reload();
+    project.markFresh();
+  }, [project.markFresh, session.reload]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -438,11 +443,11 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         return;
       }
       event.preventDefault();
-      session.reload();
+      handleRefresh();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [session.reload]);
+  }, [handleRefresh]);
 
   const appliedFileKeyRef = useRef<string | null>(null);
   const handleSelectPath = useCallback(
@@ -534,7 +539,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         onChangeScope={handleChangeScope}
         onChangeShowBackgrounds={handleChangeShowBackgrounds}
         onOpenProject={handleOpenProject}
-        onReload={session.reload}
+        onRefresh={handleRefresh}
         onSelectBranch={handleSelectBranch}
         onSelectCommit={handleSelectCommit}
         onToggleFileTreeOverlay={() => setMobileSidebarOpen((open) => !open)}
@@ -543,6 +548,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
         recentProjects={project.recentProjects}
         scope={scope}
         showBackgrounds={showBackgrounds}
+        staleAt={project.staleAt}
         view={view}
         worktrees={project.worktrees}
       />
@@ -591,7 +597,7 @@ function AppShell({ bootstrap }: { bootstrap: AppBootstrap }) {
           ) : (
             <StatusPanel
               errorMessage={session.error}
-              onRetry={session.reload}
+              onRetry={handleRefresh}
               state={session.loadState}
             />
           )}

@@ -10,6 +10,7 @@ import { localCors } from "./http/cors";
 import { createApiErrorResponse } from "./http/errors";
 import { createDiffRoutes } from "./routes/diffs";
 import { createEventRoutes } from "./routes/events";
+import { createFsRoutes } from "./routes/fs";
 import { createProjectRoutes } from "./routes/projects";
 import { createStateRoutes } from "./routes/state";
 import { createStateStore } from "./state/store";
@@ -72,13 +73,14 @@ app.use("*", requireAccess(readAuthConfig(hostname)));
 app.get("/api/health", (context) => {
   const health: HealthResponse = {
     ok: true,
-    service: "local-diffhub",
+    service: "local-diffshub",
   };
   return context.json(health);
 });
 
 app.route("/api/state", createStateRoutes(stateStore));
 app.route("/api/projects", createProjectRoutes(stateStore));
+app.route("/api/fs", createFsRoutes());
 app.route("/api/diffs", createDiffRoutes());
 app.route("/events", createEventRoutes());
 

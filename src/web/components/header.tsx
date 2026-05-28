@@ -1,4 +1,4 @@
-import { IconFileTreeFill } from "@pierre/icons";
+import { IconFileTreeFill, IconRefresh } from "@pierre/icons";
 import { memo, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -50,8 +50,8 @@ type HeaderProps = {
   onChangeOverflow(overflow: OverflowMode): void;
   onChangeScope(scope: ChangesScope): void;
   onChangeShowBackgrounds(show: boolean): void;
-  onOpenProject(path: string): void;
-  onReload(): void;
+  onOpenProject(path: string): Promise<void>;
+  onRefresh(): void;
   onSelectBranch(branch: string): void;
   onSelectCommit(commit: string | undefined): void;
   onToggleFileTreeOverlay(): void;
@@ -60,6 +60,7 @@ type HeaderProps = {
   recentProjects: RecentProject[];
   scope: ChangesScope;
   showBackgrounds: boolean;
+  staleAt: number | null;
   view: ViewKind;
   worktrees: WorktreeSummary[];
 };
@@ -93,7 +94,7 @@ export const Header = memo(function Header({
   onChangeScope,
   onChangeShowBackgrounds,
   onOpenProject,
-  onReload,
+  onRefresh,
   onSelectBranch,
   onSelectCommit,
   onToggleFileTreeOverlay,
@@ -102,6 +103,7 @@ export const Header = memo(function Header({
   recentProjects,
   scope,
   showBackgrounds,
+  staleAt,
   view,
   worktrees,
 }: HeaderProps) {
@@ -134,6 +136,20 @@ export const Header = memo(function Header({
         view={view}
       />
       <div className="inline-flex items-center gap-0.5 md:ml-auto">
+        {staleAt != null ? (
+          <Button
+            aria-label="Refresh diff"
+            className="h-7 gap-1 border border-amber-500/40 bg-amber-500/10 px-2 text-[10px] text-amber-300 hover:bg-amber-500/20"
+            onClick={onRefresh}
+            size="sm"
+            title="Changes detected — click to refresh diff (R)"
+            type="button"
+            variant="ghost"
+          >
+            <IconRefresh aria-hidden className="size-3" />
+            Refresh
+          </Button>
+        ) : null}
         <Button
           aria-label={fileTreeOverlayOpen ? "Hide file tree" : "Show file tree"}
           aria-pressed={fileTreeOverlayOpen}
@@ -170,7 +186,7 @@ export const Header = memo(function Header({
           onChangeLineNumbers={onChangeLineNumbers}
           onChangeOverflow={onChangeOverflow}
           onChangeShowBackgrounds={onChangeShowBackgrounds}
-          onReload={onReload}
+          onReload={onRefresh}
           overflow={overflow}
           showBackgrounds={showBackgrounds}
         />

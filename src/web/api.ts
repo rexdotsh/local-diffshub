@@ -4,6 +4,7 @@ import type {
   CommitsResponse,
   DiffMode,
   DiffStreamRequest,
+  DirectoryListing,
   ProjectSummary,
   UpdatePreferencesRequest,
   WorktreesResponse,
@@ -57,6 +58,10 @@ export function loadCommits(
     path,
     branch,
   });
+}
+
+export function listDirectory(path: string): Promise<DirectoryListing> {
+  return postJson("/api/fs/list", { path });
 }
 
 export function createDiffRequest(

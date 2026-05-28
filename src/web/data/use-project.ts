@@ -22,10 +22,12 @@ export type ProjectState = {
   branches: BranchSummary[];
   error: string | null;
   loadState: ProjectLoadState;
+  markFresh(): void;
   open(path: string): Promise<void>;
   project: ProjectSummary | null;
   recentProjects: RecentProject[];
   refreshSignal: number;
+  staleAt: number | null;
   worktrees: WorktreeSummary[];
 };
 
@@ -52,6 +54,7 @@ export function useProject({
   const [loadState, setLoadState] = useState<ProjectLoadState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [refreshSignal, setRefreshSignal] = useState(0);
+  const [staleAt, setStaleAt] = useState<number | null>(null);
   const requestIdRef = useRef(0);
   const repoRootRef = useRef<string | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +86,7 @@ export function useProject({
         setProject(summary);
         setBranches(metadata.branches);
         setWorktrees(metadata.worktrees);
+        setStaleAt(null);
         setLoadState("ready");
         loadAppState()
           .then((state) => {
@@ -93,12 +97,13 @@ export function useProject({
           .catch(() => undefined);
       } catch (loadError) {
         if (requestId !== requestIdRef.current) return;
-        setError(
+        const message =
           loadError instanceof Error
             ? loadError.message
-            : "Unable to open project."
-        );
+            : "Unable to open project.";
+        setError(message);
         setLoadState("error");
+        throw loadError instanceof Error ? loadError : new Error(message);
       }
     },
     [fetchMetadata]
@@ -139,7 +144,10 @@ export function useProject({
         quietRefresh().catch(() => undefined);
       }, SSE_REFRESH_DEBOUNCE_MS);
     };
-    const onChange = () => scheduleRefresh();
+    const onChange = () => {
+      setStaleAt(Date.now());
+      scheduleRefresh();
+    };
     const onError = () => {
       // Browsers auto-reconnect EventSource by default; nothing actionable here.
     };
@@ -156,14 +164,20 @@ export function useProject({
     };
   }, [quietRefresh, repoRoot]);
 
+  const markFresh = useCallback(() => {
+    setStaleAt(null);
+  }, []);
+
   return {
     branches,
     error,
     loadState,
+    markFresh,
     open,
     project,
     recentProjects,
     refreshSignal,
+    staleAt,
     worktrees,
   };
 }

@@ -7,7 +7,7 @@ import { appPreferencesSchema } from "../src/shared/api";
 import { createStateStore } from "../src/server/state/store";
 
 async function createTemporaryStatePath(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "local-diffhub-"));
+  const directory = await mkdtemp(join(tmpdir(), "local-diffshub-"));
   return join(directory, "nested", "state.json");
 }
 
