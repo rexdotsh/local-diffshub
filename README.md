@@ -46,6 +46,19 @@ Start the bundled server:
 bun run start
 ```
 
+## Docker
+
+Run the production server on local loopback:
+
+```sh
+docker compose up --build
+```
+
+- App: `http://127.0.0.1:3003`
+- State volume: `diffshub-state`
+- Mounted repo path inside the container: `/repos/diffs`
+- Add more read-only bind mounts under `/repos` to browse other local repositories.
+
 ## Verification
 
 ```sh

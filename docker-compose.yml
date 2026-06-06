@@ -1,0 +1,23 @@
+services:
+  diffs:
+    build: .
+    ports:
+      - "127.0.0.1:3003:3003"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3003
+      LOCAL_DIFFSHUB_STATE_PATH: /data/state.json
+      LOCAL_DIFFSHUB_ALLOW_LOCALHOST_BYPASS: 1
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
+      # Set these when exposing beyond localhost.
+      # LOCAL_DIFFSHUB_USER: admin
+      # LOCAL_DIFFSHUB_PASSWORD: change-me
+    volumes:
+      - diffshub-state:/data
+      - .:/repos/diffs:ro
+    restart: unless-stopped
+
+volumes:
+  diffshub-state:
